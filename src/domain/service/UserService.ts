@@ -52,7 +52,10 @@ export class UserService {
               throw new Error("NotImplementedException");
     }
 
-
+    async updateUserProfile(email: string, newData: Partial<User>): Promise<boolean> {
+              throw new Error("NotImplementedException");
+    }
+    
     async googleSignIn(): Promise<UserCredential> {
               throw new Error("NotImplementedException");
 

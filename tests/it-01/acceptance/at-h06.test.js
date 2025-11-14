@@ -8,8 +8,8 @@ beforeAll(async () => {
 describe("HU06 - Actualización de datos personales", () => {
   beforeEach(async () => {
     // Estado inicial: un usuario registrado y con sesión abierta
-    await userService.signUp("al123456@uji.es", "Maria", "MiContrasena64");
-    await userService.logIn("al123456@uji.es", "MiContrasena64");
+   // await userService.signUp("al123456@uji.es", "Maria", "MiContrasena64");
+    //await userService.logIn("al123456@uji.es", "MiContrasena64");
   });
 
   test("E1 - Válido: el usuario cambia su alias correctamente", async () => {
@@ -19,7 +19,7 @@ describe("HU06 - Actualización de datos personales", () => {
   });
 
   test("E2 - Inválido: el usuario introduce un correo inválido", async () => {
-    await expect(updateUserProfile("al123456@uji.es", { email: "yo" }))
+    await expect(userService.updateUserProfile("al123456@uji.es", { email: "yo" }))
       .rejects.toThrow("InvalidDataException");
   });
 });

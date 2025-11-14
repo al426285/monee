@@ -1,6 +1,5 @@
-import { User } from "../../../src/domain/model/User.ts";
 import { UserService } from "../../../src/domain/service/UserService.ts";
-import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach,test } from 'vitest';
+import { describe, expect, beforeAll,test } from 'vitest';
 import {  } from "module";
 
 let email: string;

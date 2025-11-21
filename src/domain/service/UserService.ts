@@ -56,11 +56,10 @@ export class UserService {
     return UserService.instance;
   }
 
-  async signUp(email: string, nickname: string, password: string): Promise<string> {
+async signUp(email: string, nickname: string, password: string): Promise<string> {
   if (!isValidEmail(email)) throw new Error("InvalidEmailException");
   if (!isValidNickname(nickname)) throw new Error("InvalidNicknameException");
-  if (!validatePassword(password)) throw new Error("InvalidPasswordException");
-
+  if (!validatePassword(password)) throw new Error("InvalidPasswordException")
   try {
     const user = new User(email, nickname);
     const userId = await this.authProvider.signUp(user, password);
@@ -182,6 +181,15 @@ export class UserService {
         throw e;
       }
       return new UserSession();
+    }
+  }
+  
+ async deleteUser(email: string): Promise<boolean> {
+    try {
+      await this.userRepository.deleteUser(email);
+      return true;
+    } catch {
+      return false;
     }
   }
 

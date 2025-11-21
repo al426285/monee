@@ -9,10 +9,11 @@ import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword,
-  updateEmail,
+  verifyBeforeUpdateEmail,
   confirmPasswordReset,
   sendPasswordResetEmail,
 } from "firebase/auth";
+import type { ActionCodeSettings } from "firebase/auth";
 import { firebaseApp, auth, googleProvider } from "../../core/config/firebaseConfig";
 import { User } from "../../domain/model/User";
 import { UserSession } from "../../domain/session/UserSession";
@@ -68,16 +69,32 @@ export class FirebaseAuthAdapter implements AuthProvider {
   async updateUserEmail(
     userId: string,
     newEmail: string,
-    currentPassword: string
+    currentPassword: string,
+    actionCodeSettings?: ActionCodeSettings
   ): Promise<void> {
     try {
       const currentUser = this.auth.currentUser;
       if (!currentUser || currentUser.uid !== userId) throw new Error("RequiresRecentLogin");
       const credential = EmailAuthProvider.credential(currentUser.email ?? "", currentPassword ?? "");
       await reauthenticateWithCredential(currentUser, credential);
-      await updateEmail(currentUser, newEmail.trim());
+      await verifyBeforeUpdateEmail(currentUser, newEmail.trim(), actionCodeSettings);
     } catch (err) {
       handleAuthError(err as FirebaseError);
+    }
+  }
+
+  async canUpdateEmail(userId: string): Promise<boolean> {
+    try {
+      const currentUser = this.auth.currentUser;
+      if (!currentUser || currentUser.uid !== userId) return true;
+      await currentUser.reload();
+      const providerIds = (currentUser.providerData ?? [])
+        .map((provider) => provider?.providerId)
+        .filter((id): id is string => Boolean(id));
+      if (!providerIds.length) return true;
+      return providerIds.includes(EmailAuthProvider.PROVIDER_ID);
+    } catch {
+      return true;
     }
   }
 }

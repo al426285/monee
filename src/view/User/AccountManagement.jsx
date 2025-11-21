@@ -12,6 +12,7 @@ export default function AccountManagement() {
   const [nicknameError, setNicknameError] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const emailReadOnly = accountInfo?.emailReadOnly ?? false;
 
   useEffect(() => {
     let mounted = true;
@@ -59,21 +60,28 @@ export default function AccountManagement() {
     try {
       const uid = getCurrentUid();
       if (!uid) throw new Error("User not authenticated");
-      const emailChanged = accountInfo ? email.trim() !== (accountInfo.email ?? "") : false;
+      const trimmedEmail = email.trim();
+      const baselineEmail = accountInfo?.email ?? "";
+      const emailChanged = !emailReadOnly && accountInfo ? trimmedEmail !== baselineEmail : false;
       if (emailChanged && !currentPassword.trim()) {
         setPasswordError("Introduce tu contraseña actual para cambiar el email.");
         setLoading(false);
         return;
       }
-      const updated = await updateAccountInfo({
-        email,
+      const emailPayload = emailReadOnly ? undefined : trimmedEmail;
+      const { profile, emailVerificationRequired } = await updateAccountInfo({
+        email: emailPayload,
         nickname,
         currentPassword: emailChanged ? currentPassword : undefined,
       });
-      setAccountInfo(updated);
-      setEmail(updated.email ?? email);
-      setNickname(updated.nickname ?? nickname);
-      setSuccessMessage("Cambios guardados correctamente.");
+      setAccountInfo(profile);
+      setEmail(profile.email ?? email);
+      setNickname(profile.nickname ?? nickname);
+      if (emailVerificationRequired) {
+        setSuccessMessage("Te enviamos un correo a tu nuevo email. Confírmalo para completar el cambio.");
+      } else {
+        setSuccessMessage("Cambios guardados correctamente.");
+      }
       setCurrentPassword("");
       setLoading(false);
     } catch (err) {
@@ -111,10 +119,16 @@ export default function AccountManagement() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  readOnly={emailReadOnly}
                   required
                 />
+                {emailReadOnly && (
+                  <p className="info-text" style={{ color: "#666", marginTop: "0.25rem", fontSize: "0.8rem" }}>
+                    This email is linked to your Google account and cannot be changed here.
+                  </p>
+                )}
                 {emailError && <p className="error-text" style={{ color: "red", marginTop: "0.25rem" }}>{emailError}</p>}
-                {accountInfo && email !== (accountInfo.email ?? "") && (
+                {accountInfo && !emailReadOnly && email !== (accountInfo.email ?? "") && (
                   <>
                     <label htmlFor="currentPassword">Current password (required to change email)</label>
                     <input

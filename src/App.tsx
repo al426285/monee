@@ -15,6 +15,7 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<LogIn />} />
         <Route path="/account" element={<AccountManagement />} />
+        <Route path="email-update-confirmation" element={<h1>Email Update Confirmation Page</h1>} />
       </Routes>
     </BrowserRouter>
   )

@@ -7,6 +7,7 @@ import { UserRepositoryFirebase } from "../../data/repository/UserRepositoryFire
 import { User } from "../model/User";
 //para evitar errores de tipo en el manejo de errores (lo rojo)
 import type { FirebaseError } from "firebase/app";
+import type { ActionCodeSettings } from "firebase/auth";
 import {
     validatePassword,
     isValidEmail,
@@ -15,6 +16,22 @@ import {
 import { handleAuthError } from "../../core/utils/exceptions";
 
 export class UserService {
+  private buildEmailActionCodeSettings(): ActionCodeSettings | undefined {
+    try {
+      const origin = typeof window !== "undefined" && window?.location?.origin
+        ? window.location.origin
+        : typeof location !== "undefined"
+          ? location.origin
+          : "";
+      if (!origin) return undefined;
+      return {
+        url: `${origin}/email-update-confirmation`,
+        handleCodeInApp: false,
+      };
+    } catch {
+      return undefined;
+    }
+  }
   private static instance: UserService;
   private authProvider!: AuthProvider;
   private userRepository!: UserRepository;
@@ -207,7 +224,7 @@ export class UserService {
     newEmail?: string,
     currentPassword?: string,
     newNickname?: string
-  ): Promise<boolean> {
+  ): Promise<{ success: boolean; emailVerificationRequired: boolean }> {
     const trimmedEmail = typeof newEmail === "string" ? newEmail.trim() : undefined;
     const trimmedNickname = typeof newNickname === "string" ? newNickname.trim() : undefined;
 
@@ -218,25 +235,38 @@ export class UserService {
     const userId = session?.userId ?? "";
     if (!userId) throw new Error("UserNotAuthenticated");
 
-    if (trimmedEmail) {
+    const currentProfile = await this.userRepository.getUserById(userId);
+    const currentEmail = currentProfile?.getEmail() ?? "";
+    const currentNickname = currentProfile?.getNickname() ?? "";
+    const normalizedCurrentEmail = currentEmail.trim().toLowerCase();
+    const normalizedNewEmail = trimmedEmail?.toLowerCase();
+    const emailChanged = !!trimmedEmail && normalizedNewEmail !== normalizedCurrentEmail;
+
+    let verificationTriggered = false;
+
+    if (emailChanged) {
+      const canUpdateEmail = await this.authProvider.canUpdateEmail(userId);
+      if (!canUpdateEmail) throw new Error("EmailUpdateNotAllowed");
       const existing = await this.userRepository.getUserByEmail(trimmedEmail);
       if (existing) throw new Error("EmailAlreadyInUse");
       if (!currentPassword || !currentPassword.trim()) throw new Error("MissingPassword");
 
       if (typeof (this.authProvider as any).updateUserEmail === "function") {
+        const actionCodeSettings = this.buildEmailActionCodeSettings();
         await this.authProvider.updateUserEmail(
           userId,
           trimmedEmail,
-          currentPassword.trim()
+          currentPassword.trim(),
+          actionCodeSettings
         );
+        verificationTriggered = true;
       } else {
         throw new Error("UpdateEmailNotSupported");
       }
     }
 
-    const currentProfile = await this.userRepository.getUserById(userId);
-    const persistedEmail = trimmedEmail ?? currentProfile?.getEmail() ?? "";
-    const persistedNickname = trimmedNickname ?? currentProfile?.getNickname() ?? "";
+    const persistedEmail = emailChanged ? (trimmedEmail as string) : currentEmail;
+    const persistedNickname = trimmedNickname ?? currentNickname;
     const tempUser = new User(persistedEmail, persistedNickname);
     await this.userRepository.updateUserProfile(userId, tempUser);
 
@@ -249,6 +279,24 @@ export class UserService {
       }
     } catch { /* ignore cache errors */ }
 
-    return true;
+    return { success: true, emailVerificationRequired: verificationTriggered };
+  }
+
+  async getAccountInfo(userId: string): Promise<{ user: User | null; emailReadOnly: boolean }> {
+    if (!userId) {
+      return { user: null, emailReadOnly: false };
+    }
+
+    const user = await this.getUserById(userId);
+    let emailReadOnly = false;
+
+    try {
+      const canEditEmail = await this.authProvider.canUpdateEmail(userId);
+      emailReadOnly = !canEditEmail;
+    } catch {
+      emailReadOnly = false;
+    }
+
+    return { user, emailReadOnly };
   }
 }

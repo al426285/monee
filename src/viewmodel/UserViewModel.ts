@@ -175,43 +175,80 @@ export const getCurrentUid = (): string | null => {
 
 export const getUser = async (uid: string) => {
   const svc = getSvc();
-  if (typeof (svc as any).getUserById === "function") {
-    const res = await (svc as any).getUserById(uid);
-    return normalizeProfile(res);
+  if (!uid) {
+    return { ...normalizeProfile(null), emailReadOnly: false };
   }
-  return normalizeProfile(null);
+
+  try {
+    const info = await svc.getAccountInfo(uid);
+    return {
+      ...normalizeProfile(info?.user),
+      emailReadOnly: Boolean(info?.emailReadOnly),
+    };
+  } catch {
+    const fallback = await svc.getUserById(uid);
+    return { ...normalizeProfile(fallback), emailReadOnly: false };
+  }
 };
 
 export const updateAccountInfo = async (opts: { email?: string; nickname?: string; currentPassword?: string }) => {
   const { email, nickname, currentPassword } = opts;
   const svc = getSvc();
   try {
-    await svc.updateCurrentUserProfile(email, currentPassword, nickname);
+    const result = await svc.updateCurrentUserProfile(email, currentPassword, nickname);
+    const emailVerificationRequired = result?.emailVerificationRequired ?? false;
 
     // devolver el usuario actualizado (si hay sesión y servicio lo permite)
     const uid = getCurrentUid();
-    if (uid && typeof (svc as any).getUserById === "function") {
-      const updated = await (svc as any).getUserById(uid);
-      return normalizeProfile(updated, { email: email ?? "", nickname: nickname ?? "" });
+    if (uid) {
+      try {
+        const info = await svc.getAccountInfo(uid);
+        return {
+          profile: {
+            ...normalizeProfile(info?.user, { email: email ?? "", nickname: nickname ?? "" }),
+            emailReadOnly: Boolean(info?.emailReadOnly),
+          },
+          emailVerificationRequired,
+        };
+      } catch {
+        /* ignore metadata errors and fall back */
+      }
     }
 
-    return normalizeProfile(null, { email: email ?? "", nickname: nickname ?? "" });
+    const normalizedProfile = normalizeProfile(null, { email: email ?? "", nickname: nickname ?? "" });
+    return {
+      profile: { ...normalizedProfile, emailReadOnly: false },
+      emailVerificationRequired,
+    };
   } catch (error) {
     // Normalizar errores de campo para que la vista pueda mostrarlos debajo de cada input
-    const msg = (error as any)?.message ?? String(error ?? "");
+    const msg =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && error !== null && "message" in error
+          ? String((error as { message?: string }).message)
+          : String(error ?? "");
 
     // lanzar objeto estructurado con fieldErrors para que la vista lo capture fácilmente
     if (msg === "InvalidEmailException") {
-      throw { fieldErrors: { email: "Email inválido" }, original: error };
+      throw { fieldErrors: { email: "Invalid email" }, original: error };
     }
     if (msg === "InvalidNicknameException") {
-      throw { fieldErrors: { nickname: "Nickname inválido" }, original: error };
+      throw { fieldErrors: { nickname: "Invalid nickname" }, original: error };
     }
     if (msg === "EmailAlreadyInUse") {
-      throw { fieldErrors: { email: "Este email ya está en uso" }, original: error };
+      throw { fieldErrors: { email: "This email is already in use" }, original: error };
     }
     if (msg === "RequiresRecentLogin" || msg === "MissingPassword" || msg === "Auth/missing-password") {
-      throw { fieldErrors: { currentPassword: "Introduce tu contraseña actual para cambiar el email." }, original: error };
+      throw { fieldErrors: { currentPassword: "Enter your current password to change your email address." }, original: error };
+    }
+    if (msg === "EmailUpdateNotAllowed") {
+      throw {
+        fieldErrors: {
+          email: "This email is linked to your Google account and cannot be changed here.",
+        },
+        original: error,
+      };
     }
 
     // fallback: re-lanzar error sin modificar

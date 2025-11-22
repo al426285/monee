@@ -338,4 +338,19 @@ export class UserService {
       handleAuthError(error as FirebaseError);
     }
   }
+
+  async recoverPassword(email: string): Promise<void> {
+    if (!email || !isValidEmail(email)) {
+      throw new Error("InvalidDataException");
+    }
+    const existing = await this.userRepository.getUserByEmail(email);
+    console.log(existing);
+    if (!existing) throw new Error("UserNotFound");
+    try {
+      await this.authProvider.sendRecoveryEmail(email);
+    } catch (error) {
+      console.error("Error sending recovery email:", error);
+      handleAuthError(error as FirebaseError);
+    }
+  }
 }

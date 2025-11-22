@@ -108,7 +108,19 @@ export class FirebaseAuthAdapter implements AuthProvider {
     }
   }
 
-  async changeUserPassword(
+
+
+  async sendRecoveryEmail(email: string): Promise<void> {
+    try {
+      await sendPasswordResetEmail(this.auth, email);
+    } catch (error) {
+      handleAuthError(error as FirebaseError);
+    }
+  }
+}
+
+/*
+ async changeUserPassword(
     currentPassword: string | null,
     newPassword: string,
     oobCode?: string // código del enlace enviado por email
@@ -164,6 +176,4 @@ export class FirebaseAuthAdapter implements AuthProvider {
       throw handleAuthError(Error as FirebaseError);
     }
   }
-}
-
-
+*/

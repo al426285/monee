@@ -92,7 +92,12 @@ export class UserService {
     }
   }
   async logOut(): Promise<void> {
-    await this.authProvider.logOut();
+    
+    try {
+      await this.authProvider.logOut();
+    } catch (Error) {
+       throw handleAuthError(Error as FirebaseError);
+    } 
   }
 
 

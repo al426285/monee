@@ -49,6 +49,10 @@ export class FirebaseAuthAdapter implements AuthProvider {
     }
   }
   async logOut(): Promise<void> {
+    const session = UserSession.loadFromCache();
+    if (!session || !session.userId) {
+      throw new Error("RequiresRecentLogin"); 
+    }
     try {
       await signOut(this.auth);
       UserSession.clear();

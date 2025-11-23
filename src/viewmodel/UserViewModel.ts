@@ -124,20 +124,21 @@ export const useUserViewModel = (onNavigate: (path: string) => void) => {
   };
 
   const handleDeleteAccount = async () => {
-    const userService = UserService.getInstance();
-    if (!userService || typeof (userService as any).deleteUser !== "function") {
-      setMessage("Servicio de usuario no disponible");
-      return;
-    }
-
     setLoading(true);
     try {
-      await (userService as any).deleteUser(email);
-      setMessage("Cuenta eliminada con éxito.");
+      const uid = getCurrentUid();
+      if (!uid) {
+        setMessage("No user is currently logged in.");
+        return;
+      }
+      const user = await svc.getUserById(uid);
+      const email = user?.getEmail() ?? "";
+      if(await svc.deleteUser(email)){
+      setMessage("Account successfully deleted.");
       onNavigate("/signup");
+    }
     } catch (error) {
-      const err = error as Error;
-      const msg = err?.message ?? "Error al eliminar la cuenta";
+      const msg = (error as Error).message ?? "Error deleting account";
       setMessage("Error: " + msg);
     } finally {
       setLoading(false);
@@ -212,6 +213,7 @@ export const getUser = async (uid: string) => {
     return { ...normalizeProfile(fallback), emailReadOnly: false };
   }
 };
+
 
 export const updateAccountInfo = async (opts: { email?: string; nickname?: string; currentPassword?: string }) => {
   const { email, nickname, currentPassword } = opts;

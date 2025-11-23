@@ -33,4 +33,15 @@ export class User {
     }
     return this;
   }
+
+  equalsUser(other: User | null): boolean {
+    if (!other) return false;
+    try {
+      const a = this.getEmail()?.trim().toLowerCase() ?? "";
+      const b = other.getEmail()?.trim().toLowerCase() ?? "";
+      return a !== "" && a === b;
+    } catch {
+      return false;
+    }
+  }
 }

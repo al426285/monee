@@ -68,4 +68,9 @@ export class FirebaseDataSource {
     await updateDoc(ref, payload);
   }
 
+  async deleteUser(userId: string): Promise<void> {
+    const ref = doc(db, "users", userId);
+    await deleteDoc(ref);
+  }
+
 }

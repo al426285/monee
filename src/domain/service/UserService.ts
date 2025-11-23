@@ -14,6 +14,7 @@ import {
 } from "../../core/utils/validators";
 import { handleAuthError } from "../../core/utils/exceptions";
 import type { ActionCodeSettings } from "firebase/auth";
+import { getUser } from "../../viewmodel/UserViewModel";
 
 export class UserService {
   private static instance: UserService;
@@ -175,14 +176,32 @@ export class UserService {
     }
   }
 
+
+  //Flujo de acciones: miarar si la sesion esrta abierta (primero mirar chache), obtener email, cerrar sesión, borrar usuario db, borrar datos, ir a signup
   async deleteUser(email: string): Promise<boolean> {
     try {
-      await this.userRepository.deleteUser(email);
-      return true;
-    } catch {
-      return false;
-    }
+      const session = UserSession.loadFromCache();
+      const userId = session?.userId ?? "";
+      const currentUser = await this.userRepository.getUserById(userId);
+      if (!currentUser) {
+        throw new Error("UserNotAuthenticated");
+      } else {
+
+        // comprobar que el email corresponde al usuario autenticado
+        const userFromEmail = await this.userRepository.getUserByEmail(email);
+        if (currentUser.equalsUser(userFromEmail)) {
+          //En el futuro borrar los datos del usuario
+          this.logOut();
+          await this.userRepository.deleteUser(userId);
+          return true;
+        }
+        return false;
+
+      }
+    } catch (error: any) { }
+    return false;
   }
+
 
   // Fuente de verdad: obtener usuario por id delegando al UserRepository
   async getUserById(userId: string): Promise<User | null> {
@@ -218,6 +237,8 @@ export class UserService {
 
     return null;
   }
+
+  
 
   async updateCurrentUserProfile(
     newEmail?: string,

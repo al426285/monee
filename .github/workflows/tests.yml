@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - "it*"
+      - "main"
 
 jobs:
   integration_tests:

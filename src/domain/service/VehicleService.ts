@@ -4,6 +4,7 @@ import { VehicleFactory } from "../model/VehicleFactory";
 import type { FuelType } from "../model/VehicleInterface";
 import { isValidVehicleName } from "../../core/utils/validators";
 import { UserSession } from "../session/UserSession";
+import type { Vehicle } from "../model/VehicleInterface";
 
 
 export class VehicleService {
@@ -33,6 +34,14 @@ export class VehicleService {
         if (session?.userId) return session.userId;
         throw new Error("UserNotFound: User session not found. Provide an explicit userId or ensure the session is logged in.");
     }
+
+    
+    //OBTENER LISTA DE VEHICULOS
+    async getVehicles(ownerId: string | undefined): Promise<Vehicle[]> {
+        ownerId = this.resolveUserId(ownerId);
+        return this.vehicleRepository.getVehiclesByOwnerId(ownerId);
+    }
+
     //tipo {(bike, electricCar, fuelCar), fueltype{ gasoline, diesel} el electric se le asigna por defecto, consumo{numero}}
     async registerVehicle(ownerId: string | undefined, type: string, name: string, fuelType?: FuelType, consumption?: number): Promise<void> {
 

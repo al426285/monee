@@ -1,6 +1,5 @@
-
 import type { Vehicle, FuelType } from './VehicleInterface';
-import { Bike, ElectricCar, FuelCar } from './vehicles';
+import { Bike, ElectricCar, FuelCar, Walking } from './vehicles';
 import { isValidVehicleName } from '../../core/utils/validators';
 
 // Clase Fábrica para crear vehículos según el tipo (type)
@@ -9,6 +8,7 @@ export class VehicleFactory {
     /**
      * @param type Tipo de vehículo: "bike", "electricCar" o "fuelCar"
      * @param fuelType Tipo de combustible ("gasoline", "diesel" o "electric") 
+     * @param type {Bike, ElectricCar, FuelCar, Walking}
      * @param consumption Valor de consumo según el tipo (kWh/100km o L/100km)
      */
     static createVehicle(type: string, name: string, fuelType?: FuelType, consumption: number = 0
@@ -21,7 +21,10 @@ export class VehicleFactory {
 
         switch (type.toLowerCase()) {
             case 'bike':
-                return new Bike(name);
+                return new Bike(name, consumption);
+
+            case 'walking':
+                return new Walking(name, consumption);
 
             case 'electriccar':
                 if (consumption < 0) throw new Error('Consumo inválido para vehículo eléctrico');

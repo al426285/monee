@@ -5,11 +5,13 @@ import type { Vehicle, Consumption, FuelType } from './VehicleInterface';
 //BICICLETA
 export class Bike implements Vehicle {
     name: string;
+    type: string = 'Bike';
     fuelType: FuelType | null = null;
-    consumption: Consumption = { amount: 0, unit: 'L/100km' };
+    consumption: Consumption;
 
-    constructor(name: string) {
+    constructor(name: string, consumptionAmount: number) {
         this.name = name;
+        this.consumption = { amount: consumptionAmount, unit: 'kcal/min' };
     }
 
     mostrarInfo(): void {
@@ -17,10 +19,28 @@ export class Bike implements Vehicle {
     }
 }
 
+//caminar
+export class Walking implements Vehicle {
+    name: string;
+    type: string = 'Walking';
+    fuelType: FuelType | null = null;
+    consumption: Consumption;
+
+    constructor(name: string, caloriesPerMin: number = 5) { // por defecto son unas 5 kcal/min
+        this.name = name;
+        this.consumption = { amount: caloriesPerMin, unit: 'kcal/min' };
+    }
+
+    mostrarInfo(): void {
+        console.log(`Vehículo: Walking, Nombre: ${this.name}, Consumo: ${this.consumption.amount} ${this.consumption.unit}`);
+    }
+}
+
 
 // Coche Eléctrico
 export class ElectricCar implements Vehicle {
     name: string;
+    type: string = 'ElectricCar';
     fuelType: FuelType = 'electric';
     consumption: Consumption;
 
@@ -38,6 +58,7 @@ export class ElectricCar implements Vehicle {
 // Coche de Combustión
 export class FuelCar implements Vehicle {
     name: string;
+    type: string = 'FuelCar';
     fuelType: FuelType = 'gasoline';
     consumption: Consumption;
 

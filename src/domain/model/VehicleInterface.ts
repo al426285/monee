@@ -6,7 +6,7 @@ export type FuelType = 'gasoline' | 'diesel' | 'electric';
 // Interfaz para representar la cantidad y la unidad del consumo
 export interface Consumption {
     amount: number;     // valor numérico
-    unit: 'L/100km' | 'kWh/100km';// unidad de medida
+  unit: 'L/100km' | 'kWh/100km' | 'kcal/min'; // unidad de medida
 }
 
 
@@ -16,5 +16,6 @@ export interface Vehicle {
     name: string;
     fuelType: FuelType | null;//la bici es null
     consumption: Consumption; 
+    type: string; //Bike, ElectricCar, FuelCar, Walking para poder saber tipo a la hora de guardarlo y mostrarlo ya que walking y bike dan problemas porque son casi iguales
     mostrarInfo(): void; 
 }

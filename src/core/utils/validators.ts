@@ -16,7 +16,8 @@ export const validatePassword = (password: string): boolean => {
 };
 
 export const isValidVehicleName = (name: string): boolean => {
-  const nameRegex = /^[A-Za-z0-9!@#$%^&*()\-_=\+\[\]\{\}:.\?]+$/;
+ 
+  const nameRegex = /^[A-Za-z0-9 !@#$%^&*()\-_=\+\[\]\{\}:.\?]+$/;
+
   return name.length >= 2 && nameRegex.test(name);
 };
-

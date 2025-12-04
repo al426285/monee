@@ -35,7 +35,7 @@ export class VehicleService {
         throw new Error("UserNotFound: User session not found. Provide an explicit userId or ensure the session is logged in.");
     }
 
-    
+
     //OBTENER LISTA DE VEHICULOS
     async getVehicles(ownerId: string | undefined): Promise<Vehicle[]> {
         ownerId = this.resolveUserId(ownerId);
@@ -65,10 +65,10 @@ export class VehicleService {
         }
 
         // Bike: fuelType y consumption no deben importan
-        if (type === "bike") {
+        if (type === "bike" || type === "walking") {
             fuelType = undefined;
-            consumption = 0;
         }
+
 
         // Creamos el vehículo usando el patrón Factory Method
         const vehicle = VehicleFactory.createVehicle(
@@ -78,7 +78,14 @@ export class VehicleService {
             consumption
         );
 
+    
+
+        console.log("Created vehicle:", vehicle.type);   
+
         // Guardamos en Firebase
         await this.vehicleRepository.saveVehicle(ownerId, vehicle);
+    }
+    async deleteVehicle(ownerId: string, vehicleName: string): Promise<void> {
+        return this.vehicleRepository.deleteVehicle(ownerId, vehicleName);
     }
 }

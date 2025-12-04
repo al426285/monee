@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import EditDeleteActions from "./EditDeleteActions";
 import { VehicleViewModel } from "../../viewmodel/VehicleViewModel";
 import Swal from "sweetalert2";
+import { isValidVehicleName } from "../../core/utils/validators";
 export default function VehiclesPage() {
   const {
     vehicles,
@@ -16,9 +17,22 @@ export default function VehiclesPage() {
     "M12 2a1 1 0 0 1 1 1v8h8a1 1 0 1 1 0 2h-8v8a1 1 0 1 1-2 0v-8H3a1 1 0 1 1 0-2h8V3a1 1 0 0 1 1-1z";
 
   // separamos por por tipo
-  const bikes = useMemo(() => vehicles.filter((v) => v.type === "bike"), [vehicles]);
-  const walkings = useMemo(() => vehicles.filter((v) => v.type === "walking"), [vehicles]);
-  const regularVehicles = useMemo(() => vehicles.filter((v) => v.type !== "bike" && v.type !== "walking"), [vehicles]);
+  // console.log("aquiiii", vehicles[0]);
+  const bikes = useMemo(() => vehicles.filter((v) => v.type === "Bike"), [vehicles]);
+  const walkings = useMemo(() => vehicles.filter((v) => v.type === "Walking"), [vehicles]);
+  const regularVehicles = useMemo(() => vehicles.filter((v) => v.type !== "Bike" && v.type !== "Walking"), [vehicles]);
+
+
+  const getVehicleImage = (vehicle) => {
+    switch (vehicle.type) {
+      case "Bike":
+        return "../../../resources/iconBicicle.png";
+      case "Walking":
+        return "../../../resources/iconWalking.png";
+      default:
+        return "../../../resources/iconVehicle.png";
+    }
+  };
 
   //provisional, currarme un modal con formulario sweetalert2
   const handleAddClick = async () => {
@@ -37,7 +51,11 @@ export default function VehiclesPage() {
       },
 
 
-      inputValidator: (value) => !value && "You need to write something!"
+      inputValidator: (value) => {
+        if (!value) return "You need to write something!";
+        if (!isValidVehicleName(value)) return "Invalid name format, cannot contain special characters or letter 'ñ'.";
+        return null;
+      }
     });
 
     if (!name) return;
@@ -104,21 +122,15 @@ export default function VehiclesPage() {
     `,
         background: "#CCD5B9",
         color: "#585233",
-        customClass: {
-          confirmButton: "my-confirm-btn",
-          cancelButton: "my-cancel-btn"
-        },
         focusConfirm: false,// para que no haga focus en el botón y deje seleccionar
         preConfirm: () => {
           res = Swal.getPopup().querySelector('#fuelType');
           return res.value;
-          console.log(res);
         },
         showCancelButton: true,
         inputValidator: (value) => !value && "Select a fuel type",
       });
 
-      console.log(fuel);
       if (!fuel) return;
       fuelType = fuel;
 
@@ -169,41 +181,101 @@ export default function VehiclesPage() {
       if (!cons) return;
       consumption = parseFloat(cons);
     }
+    else if (type === 'walking' || type === 'bike') {
+      fuelType = null;
+      const { value: cons } = await Swal.fire({
+        title: "Consumption (Kcal/min)",
+        input: "number",
+        inputPlaceholder: "Enter consumption",
+        inputAttributes: { min: "0", step: "0.1" },
+        showCancelButton: true,
+        background: "#CCD5B9",
+        color: "#585233",
+        customClass: {
+          confirmButton: "my-confirm-btn",
+          cancelButton: "my-cancel-btn",
+          input: "my-input"
+        },
 
+        inputValidator: (value) =>
+          !value || parseFloat(value) <= 0
+            ? "Consumption must be greater than 0"
+            : null,
+      });
+      if (!cons) return;
+      consumption = parseFloat(cons);
+    }
     // llamar al viewmodel
     await addVehicle(type, name, fuelType, consumption);
   };
 
   const handleDelete = async (id) => {
-    await deleteVehicle(id);
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: `You are about to delete "${id}". This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete",
+      cancelButtonText: "Cancel",
+      background: "#E0E6D5",
+      color: "#585233",
+      customClass: {
+        confirmButton: "my-confirm-btn",
+        cancelButton: "my-cancel-btn"
+      }
+    });
+
+    // solo si confirma borramos
+    if (result.isConfirmed) {
+      await deleteVehicle(id);
+
+      // mensaje de OK
+      await Swal.fire({
+        title: "Deleted!",
+        text: `"${id}" has been removed successfully.`,
+        icon: "success",
+        background: "#E0E6D5",
+        color: "#585233",
+        customClass: {
+          confirmButton: "my-confirm-btn",
+        }
+      });
+    }
   };
+
+  const capitalize = (str) =>
+    str.charAt(0).toUpperCase() + str.slice(1);
+
 
   const renderList = (list) => {
     if (loading) return <li className="item-card item-card--empty">Loading...</li>;
     if (!list.length) return <li className="item-card item-card--empty">No items found</li>;
 
+    //  console.log("Rendering list:", list[0].constructor.name);
+
+
     return list.map((v) => (
       <li key={v.id} className="item-card">
         <div className="item-card__icon" aria-hidden>
-          <svg viewBox="0 0 24 24" className="item-icon">
-            <path
-              fill="currentColor"
-              d="M12 2C9 2 5 5 5 10c0 6.5 7 12 7 12s7-5.5 7-12c0-5-4-8-7-8zM12 12.5A2.5 2.5 0 1 1 12 7.5a2.5 2.5 0 0 1 0 5z"
-            />
-          </svg>
+          <img src={getVehicleImage(v)}
+            className="item-icon" alt="bici" />
+
         </div>
 
         <div className="item-card__content">
           <div className="item-card__title">{v.name}</div>
           <div className="item-card__meta">
-            {v.type}
-            {v.fuelType ? ` • ${v.fuelType}` : ""}
-            {v.consumption ? ` • ${v.consumption} L/100km` : ""}
+
+            {v.fuelType ? `  ${capitalize(v.fuelType)} •` : ""}
+
+            {v.consumption?.amount?.amount
+              ? `  ${v.consumption.amount.amount} ${v.consumption.amount.unit}`
+              : ""}
           </div>
         </div>
 
         <EditDeleteActions
-          id={v.id}
+          id={v.name}
           editTarget={"/edit-vehicle"}
           onDelete={handleDelete}
         />

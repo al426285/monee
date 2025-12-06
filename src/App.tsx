@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import '../styles/styles.css'
+import '../styles/home.css'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import SignUp from './view/User/SignUp'
 import LogIn from './view/User/LogIn'
 import AccountManagement from './view/User/AccountManagement'
 import RecuperarContraseña from './view/User/RecuperarContraseña'
 import LogOut from './view/User/LogOut'
+import {Home} from './view/home/Home'
 function App() {
   const [count, setCount] = useState(0)
 
@@ -19,6 +21,7 @@ function App() {
         <Route path="email-update-confirmation" element={<h1>Email Update Confirmation Page</h1>} />
         <Route path="recover-password" element={<RecuperarContraseña />} />
         <Route path="logout" element={<LogOut />} />
+        <Route path="/home" element={<Home />} />c
       </Routes>
     </BrowserRouter>
   )

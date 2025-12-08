@@ -34,14 +34,14 @@ const serializePlace = (place: Place | Partial<Place>) => {
 };
 
 export class PlaceRepositoryFirebase implements PlaceRepository {
-	async getPlacesByUser(userId: string): Promise<Place[]> {
+	async getPlacesByUser(userId: string): Promise<any[]> {
 		const placesRef = collectionForUser(userId);
 		const q = query(placesRef, orderBy("createdAt", "desc"));
 		const snapshot = await getDocs(q);
 		return snapshot.docs.map((docSnap) => normalizeDoc(docSnap));
 	}
 
-	async getPlaceById(userId: string, placeId: string): Promise<Place | null> {
+	async getPlaceById(userId: string, placeId: string): Promise<any | null> {
 		if (!placeId) return null;
 		const docRef = doc(collectionForUser(userId), placeId);
 		const snapshot = await getDoc(docRef);

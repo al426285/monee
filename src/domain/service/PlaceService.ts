@@ -1,7 +1,10 @@
+import type { FirebaseError } from "firebase/app";
+import { handleAuthError } from "../../core/utils/exceptions.ts";
 import { PlaceRepositoryFirebase } from "../../data/repository/PlaceRepositoryFirebase.js";
 import { Place } from "../model/Place.js";
 import type { PlaceRepository } from    "../repository/PlaceRepository.js";
 import { UserSession } from "../session/UserSession.js";
+
 
 const ORS_API_KEY = import.meta.env.VITE_ORS_API_KEY ;
 const ORS_BASE = "/ors";
@@ -39,18 +42,29 @@ export class PlaceService {
     }
 
         private resolveUserId(explicit?: string): string {
-            if (explicit) return explicit;
-            const session = this.sessionProvider();
-            if (session?.userId) return session.userId;
-            throw new Error("User session not found. Provide an explicit user id or ensure the session is stored.");
+            try {
+                if (explicit) return explicit;
+                const session = this.sessionProvider();
+                if (session?.userId) return session.userId;
+                throw new Error("SessionNotFoundException");
+            } catch (error) {
+                handleAuthError(error as FirebaseError);
+                throw error;
+            }
         }
 
-        async getSavedPlaces(userId?: string): Promise<Place[]> {
-            const resolvedId = this.resolveUserId(userId);
+        async getSavedPlaces(userId?: string): Promise<any[]> {
+           const resolvedId = this.resolveUserId(userId)
+                if(!resolvedId){
+                    throw new Error("SessionNotFoundException");
+                }
+                
+                console.log("enmedio");
             return this.placeRepository.getPlacesByUser(resolvedId);
+   
         }
 
-        async getPlaceDetails(placeId: string, userId?: string): Promise<Place | null> {
+        async getPlaceDetails(placeId: string, userId?: string): Promise<any | null> {
             const resolvedId = this.resolveUserId(userId);
             return this.placeRepository.getPlaceById(resolvedId, placeId);
         }
@@ -88,10 +102,50 @@ export class PlaceService {
             return refreshed;
         }
 
+        async editPlaceByName(name: string, newName?: string, newDescription?: string): Promise<void> {
+            const places = await this.getSavedPlaces();
+            for (const place of places) {
+                if (place.name === name) {
+                    const updatedName = newName ?? place.name;
+                    const updatedDescription = newDescription ?? place.description;
+                    const updatedPlace = new Place(updatedName, place.latitude, place.longitude, undefined, updatedDescription);
+                    await this.editPlace(place.id, updatedPlace);
+                    return;
+                }
+            }
+            throw new Error("PlaceNotDeletedException");
+        }
+
+        async editPlaceByToponym(toponym: string, newName?: string, newDescription?: string): Promise<void> {
+            const places = await this.getSavedPlaces();
+            for (const place of places) {
+                if (place.toponymicAddress === toponym) {
+                    const updatedName = newName ?? place.name;
+                    const updatedDescription = newDescription ?? place.description;
+                    const updatedPlace = new Place(updatedName, place.latitude, place.longitude, undefined, updatedDescription);
+                    await this.editPlace(place.id, updatedPlace);
+                    return;
+                }
+            }
+            throw new Error("PlaceNotDeletedException");
+        }
+
         async deletePlace(placeId: string, options: { userId?: string } = {}): Promise<void> {
             const resolvedId = this.resolveUserId(options.userId);
             await this.placeRepository.deletePlace(resolvedId, placeId);
         }
+
+        async deletePlaceByName(name: string): Promise<void> {
+            const places = await this.getSavedPlaces();
+            for (const place of places) {
+                if (place.name === name) {
+                    await this.deletePlace(place.id);
+                    return;
+                }
+            }
+            throw new Error("PlaceNotDeletedException");
+        }
+           
 
         private async ensureUniquePlace(userId: string, candidate: Place): Promise<void> {
             const normalizedName = candidate.name?.trim().toLowerCase();

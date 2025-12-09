@@ -278,7 +278,7 @@ export default function EditPlace() {
     <section className="place-row">
       <aside className="place-card default-container with-border">
         <div className="card-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ margin: 0 }}>Edit Place</h2>
+          <h2 className="card-title">Edit Place</h2>
           <button type="button" className="btn btn-secondary" onClick={handleBack}>
             Back
           </button>

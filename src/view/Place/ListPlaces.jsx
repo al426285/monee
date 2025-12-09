@@ -139,11 +139,12 @@ export default function ListPlaces({ onAddPlace, onEditPlace, className = "" }) 
   );
 
   const recentPlaces = useMemo(() => filteredPlaces.slice(0, 3), [filteredPlaces]);
-  const favoritePlaces = useMemo(() => {
-    const flagged = filteredPlaces.filter((place) => place?.isFavorite || place?.favorite);
-    if (flagged.length > 0) return flagged;
-    return filteredPlaces.slice(0, Math.min(2, filteredPlaces.length));
-  }, [filteredPlaces]);
+  // Sólo toma los marcados explícitamente como favoritos; no hay fallback inventado
+  const favoritePlaces = useMemo(
+    () => filteredPlaces.filter((place) => Boolean(place?.isFavorite || place?.favorite)),
+    [filteredPlaces]
+  );
+
   const remainingPlaces = useMemo(() => {
     const favoriteIds = new Set(favoritePlaces.map((p) => p?.id));
     return filteredPlaces.filter((place) => !favoriteIds.has(place?.id));
@@ -190,7 +191,11 @@ export default function ListPlaces({ onAddPlace, onEditPlace, className = "" }) 
       {renderSection(
         "Favorites",
         favoritePlaces,
-        filteredPlaces.length === 0 ? "No places match your search." : "Mark some places as favorites to see them here."
+        favoritePlaces.length === 0
+          ? "No favorite places yet."
+          : filteredPlaces.length === 0
+          ? "No places match your search."
+          : "Mark some places as favorites to see them here."
       )}
 
       {renderSection(

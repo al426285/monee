@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import EditDeleteActions from "./EditDeleteActions";
 import { VehicleViewModel } from "../../viewmodel/VehicleViewModel";
 import Swal from "sweetalert2";
@@ -13,14 +13,28 @@ export default function VehiclesPage() {
     deleteVehicle,
   } = VehicleViewModel();
 
+  const [searchTerm, setSearchTerm] = useState("");
+
   const PLUS_ICON_PATH =
     "M12 2a1 1 0 0 1 1 1v8h8a1 1 0 1 1 0 2h-8v8a1 1 0 1 1-2 0v-8H3a1 1 0 1 1 0-2h8V3a1 1 0 0 1 1-1z";
 
-  // separamos por por tipo
-  // console.log("aquiiii", vehicles[0]);
-  const bikes = useMemo(() => vehicles.filter((v) => v.type === "Bike"), [vehicles]);
-  const walkings = useMemo(() => vehicles.filter((v) => v.type === "Walking"), [vehicles]);
-  const regularVehicles = useMemo(() => vehicles.filter((v) => v.type !== "Bike" && v.type !== "Walking"), [vehicles]);
+  const filteredVehicles = useMemo(() => {
+    const normalized = searchTerm.trim().toLowerCase();
+    if (!normalized) return vehicles;
+    return vehicles.filter((vehicle) => {
+      const nameMatch = vehicle.name?.toLowerCase().includes(normalized);
+      const typeMatch = vehicle.type?.toLowerCase().includes(normalized);
+      const fuelMatch = vehicle.fuelType
+        ? vehicle.fuelType.toLowerCase().includes(normalized)
+        : false;
+      return nameMatch || typeMatch || fuelMatch;
+    });
+  }, [vehicles, searchTerm]);
+
+  // separamos por por tipo y vemos que cumplen con el filtro
+  const bikes = useMemo(() => filteredVehicles.filter((v) => v.type === "Bike"), [filteredVehicles]);
+  const walkings = useMemo(() => filteredVehicles.filter((v) => v.type === "Walking"), [filteredVehicles]);
+  const regularVehicles = useMemo(() => filteredVehicles.filter((v) => v.type !== "Bike" && v.type !== "Walking"), [filteredVehicles]);
 
 
   const getVehicleImage = (vehicle) => {
@@ -316,6 +330,21 @@ export default function VehiclesPage() {
           </svg>
           Add Mobility Method
         </button>
+      </div>
+
+      <div className="search-bar" style={{ border:'solid 1px #585233' }}>
+        <label htmlFor="vehicle-search" style={{ fontWeight: 'bold' }} className="sr-only">
+          Search vehicles
+        </label>
+        <input
+          id="vehicle-search"
+          type="search"
+          className="search-input"
+          placeholder="Search by name, or type of fuel"
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          aria-label="Search vehicles by name, type, or fuel"
+        />
       </div>
 
       {error && <div className="error-banner">{error}</div>}

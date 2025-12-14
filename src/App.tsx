@@ -9,6 +9,7 @@ import LogOut from './view/User/LogOut'
 import NewPlace from './view/Place/NewPlace'
 import ListPlaces from './view/Place/ListPlaces'
 import EditPlace from './view/Place/EditPlace'
+import VehiclesPage from './view/vehicle/VehiclesPage'
 function App() {
   const [count, setCount] = useState(0)
 
@@ -25,6 +26,7 @@ function App() {
         <Route path="/newplace" element={<NewPlace />} />
         <Route path="/listplaces" element={<ListPlaces />} />
         <Route path="/editplace/:placeId" element={<EditPlace />} />
+        <Route path="/vehiclespage"  element={<VehiclesPage />} />
       </Routes>
     </BrowserRouter>
   )

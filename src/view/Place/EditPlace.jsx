@@ -230,13 +230,17 @@ export default function EditPlace() {
 
     setSaving(true);
     try {
-      await placeViewmodel.updatePlace(placeId, {
+      const descriptionValue = placeInfo.description?.trim() ?? "";
+      const payload = {
         name: finalName,
-        description: placeInfo.description?.trim() || undefined,
+        description: descriptionValue,
         latitude: latValue,
         longitude: lngValue,
         toponymicAddress: baseName || undefined,
-      });
+      };
+      console.log("Updating place with payload:", payload);
+      await placeViewmodel.updatePlace(placeId, payload);
+           
       setSuccessMessage(`Place "${finalName}" updated successfully.`);
     } catch (err) {
       const msg = err?.message || "The place could not be updated.";

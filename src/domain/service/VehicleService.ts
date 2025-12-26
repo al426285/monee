@@ -91,5 +91,29 @@ export class VehicleService {
 
     async editVehicle(ownerId: string, vehicleName: string, updates: Partial<Vehicle>): Promise<Vehicle> {
         //sin implementar
+        const userId = this.resolveUserId(ownerId);
+        const current = await this.getVehicleDetails(vehicleName, userId);
+        if (!current) throw new Error("VehicleNotFoundException");
+        
+        const consumptionAmount = updates.consumption 
+            ? updates.consumption.amount 
+            : current.consumption.amount;
+        
+        const entity = VehicleFactory.createVehicle(
+            current.type,
+            updates.name ?? current.name,
+            (updates.fuelType ?? current.fuelType) || undefined,
+            consumptionAmount
+        );
+        
+        await this.vehicleRepository.updateVehicle(userId, vehicleName, entity);
+
+        const refreshed = await this.vehicleRepository.getVehicleByName(userId, entity.name);
+            if (!refreshed) throw new Error("Vehicle could not be refreshed after edit");
+            return refreshed;
+
+    }
+    async getVehicleDetails(vehicleName: string, userId: string): Promise<Vehicle | null> {
+        return this.vehicleRepository.getVehicleByName(userId, vehicleName);
     }
 }

@@ -48,28 +48,29 @@ const mockORSResponseForRoute = (distanceMeters: number, durationSeconds: number
 };
 
 beforeAll(async () => {
-    // Crear usuario de prueba e iniciar sesión
-    try {
-       // await userService.signUp("al123456@uji.es", "Maria", "MiContrasena64");
-        await userService.logIn("al123456@uji.es", "MiContrasena64");
+	// Crear usuario de prueba e iniciar sesión
+	try {
+		// await userService.signUp("al123456@uji.es", "Maria", "MiContrasena64");
+		await userService.logIn("al123456@uji.es", "MiContrasena64");
 		await vehicleService.registerVehicle("al123456@uji.es", "fuelCar", "Fiat Punto", "gasoline", 4.5);
 		await vehicleService.registerVehicle("al123456@uji.es", "electricCar", "Terreneitor", undefined, 20);
-			
-    } catch (error) {
-        console.error("Error en beforeAll:", error);
-    }
+
+	} catch (error) {
+		console.error("Error en beforeAll:", error);
+	}
 
 });
 
 afterAll(async () => {
 	// Crear usuario de prueba e iniciar sesión
-    try {
+	try {
+		await userService.logIn("al123456@uji.es", "MiContrasena64");
 		await vehicleService.deleteVehicle("al123456@uji.es", "Fiat Punto");
 		await vehicleService.deleteVehicle("al123456@uji.es", "Terreneitor");
-        await userService.logOut();			
-    } catch (error) {
-        console.error("Error en afterAll:", error);
-    }
+		await userService.logOut();
+	} catch (error) {
+		console.error("Error en afterAll:", error);
+	}
 });
 
 describe("HU15 - Editar los datos de un vehículo (nombre, tipo de combustible, consumo medio)", () => {
@@ -86,7 +87,7 @@ describe("HU15 - Editar los datos de un vehículo (nombre, tipo de combustible, 
 		await expect(
 			vehicleService.editVehicle("al123456@uji.es", "Seat Ibiza", { fuelType: "diesel" })
 		).rejects.toThrow("VehicleNotFoundException");
-		
+
 	});
 
 });

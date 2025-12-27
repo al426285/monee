@@ -58,7 +58,7 @@ export class VehicleService {
         }
 
         // ElectricCar: fuelType debe ser "electric"
-        if (type === "electricCar" && fuelType !== "electric") {
+        if (type === "electricCar" && fuelType && fuelType !== "electric") {
             throw new Error("Un vehículo eléctrico debe tener fuelType = 'electric'.");
             //EN VERDAD DA IGUAL PORQUE EN LA FACTORY SE ASIGNA DIRECTAMENTE
         }
@@ -77,9 +77,9 @@ export class VehicleService {
             consumption
         );
 
-    
 
-       // console.log("Created vehicle:", vehicle.type);   
+
+        // console.log("Created vehicle:", vehicle.type);   
 
         // Guardamos en Firebase
         await this.vehicleRepository.saveVehicle(ownerId, vehicle);
@@ -94,22 +94,22 @@ export class VehicleService {
         const current = await this.getVehicleDetails(vehicleName, userId);
         if (!current) throw new Error("VehicleNotFoundException");
         
-        const consumptionAmount = updates.consumption 
-            ? updates.consumption.amount 
+        const consumptionAmount = updates.consumption
+            ? updates.consumption.amount
             : current.consumption.amount;
-        
+
         const entity = VehicleFactory.createVehicle(
             current.type,
             updates.name ?? current.name,
             (updates.fuelType ?? current.fuelType) || undefined,
             consumptionAmount
         );
-        
+
         await this.vehicleRepository.updateVehicle(userId, vehicleName, entity);
 
         const refreshed = await this.vehicleRepository.getVehicleByName(userId, entity.name);
-            if (!refreshed) throw new Error("Vehicle could not be refreshed after edit");
-            return refreshed;
+        if (!refreshed) throw new Error("Vehicle could not be refreshed after edit");
+        return refreshed;
 
     }
     async getVehicleDetails(vehicleName: string, userId: string): Promise<Vehicle | null> {

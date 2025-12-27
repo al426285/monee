@@ -11,11 +11,14 @@ export default function VehiclesPage() {
     loadVehicles,
     addVehicle,
     deleteVehicle,
+    updateVehicle,
     getFuelUnitsPreference,
     getElectricUnitsPreference,
   } = VehicleViewModel();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", fuelType: "", consumption: "" });
 
   //Preferencias de unidades, deberia de venir del viewmodel
   //seria = get....
@@ -348,6 +351,40 @@ export default function VehiclesPage() {
     }
   };
 
+  const handleEdit = (vehicleName) => {
+    const vehicle = vehicles.find(v => v.name === vehicleName);
+    if (!vehicle) return;
+    
+    const normalized = normalizeConsumptionShape(vehicle.consumption);
+    setEditingVehicle(vehicle);
+    setEditForm({
+      name: vehicle.name || "",
+      fuelType: vehicle.fuelType || "",
+      consumption: normalized?.amount?.toString() || ""
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingVehicle(null);
+    setEditForm({ name: "", fuelType: "", consumption: "" });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingVehicle) return;
+    
+    const updates = {
+      name: editForm.name,
+      fuelType: editForm.fuelType || editingVehicle.fuelType,
+      consumption: {
+        amount: parseFloat(editForm.consumption) || 0,
+        unit: editingVehicle.consumption?.unit || "kcal/min"
+      }
+    };
+
+    await updateVehicle(editingVehicle.name, updates);
+    handleCancelEdit();
+  };
+
   const capitalize = (str) =>
     str.charAt(0).toUpperCase() + str.slice(1);
 
@@ -432,34 +469,103 @@ export default function VehiclesPage() {
     if (loading) return <li className="item-card item-card--empty">Loading...</li>;
     if (!list.length) return <li className="item-card item-card--empty">No items found</li>;
 
-    //  console.log("Rendering list:", list[0].constructor.name);
+    return list.map((v) => {
+      const isEditing = editingVehicle?.name === v.name;
+      
+      if (isEditing) {
+        return (
+          <li key={v.id} className="item-card item-card--editing">
+            <div className="edit-form">
+              <h3 className="edit-form__title">Edit {capitalize(v.type)}</h3>
+              
+              <div className="edit-form__field">
+                <label className="edit-form__label">{capitalize(v.type)} Name</label>
+                <input
+                  type="text"
+                  className="edit-form__input"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                  placeholder="Enter name"
+                />
+              </div>
 
+              {v.type === "FuelCar" && (
+                <div className="edit-form__field">
+                  <label className="edit-form__label">Fuel Type</label>
+                  <select
+                    className="edit-form__select"
+                    value={editForm.fuelType}
+                    onChange={(e) => setEditForm({...editForm, fuelType: e.target.value})}
+                  >
+                    <option value="gasoline">Gasoline</option>
+                    <option value="diesel">Diesel</option>
+                  </select>
+                </div>
+              )}
 
-    return list.map((v) => (
-      <li key={v.id} className="item-card">
-        <div className="item-card__icon" aria-hidden>
-          <img src={getVehicleImage(v)}
-            className="item-icon" alt="bici" />
+              <div className="edit-form__field">
+                <label className="edit-form__label">
+                  Average {v.type === "Bike" || v.type === "Walking" ? "calories" : ""} consumption
+                </label>
+                <div className="edit-form__input-group">
+                  <input
+                    type="number"
+                    className="edit-form__input"
+                    value={editForm.consumption}
+                    onChange={(e) => setEditForm({...editForm, consumption: e.target.value})}
+                    placeholder="Enter consumption"
+                    step="0.1"
+                    min="0"
+                  />
+                  <span className="edit-form__unit">
+                    {v.consumption?.unit || "kcal/min"}
+                  </span>
+                </div>
+              </div>
 
-        </div>
+              <div className="edit-form__actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleCancelEdit}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSaveEdit}
+                >
+                  Save changes
+                </button>
+              </div>
+            </div>
+          </li>
+        );
+      }
 
-        <div className="item-card__content">
-          <div className="item-card__title">{v.name}</div>
-          <div className="item-card__meta">
-
-            {v.fuelType ? `${capitalize(v.fuelType)} • ` : ""}
-
-            {formatConsumptionDisplay(v)}
+      return (
+        <li key={v.id} className="item-card">
+          <div className="item-card__icon" aria-hidden>
+            <img src={getVehicleImage(v)} className="item-icon" alt="vehicle" />
           </div>
-        </div>
 
-        <EditDeleteActions
-          id={v.name}
-          editTarget={"/edit-vehicle"}
-          onDelete={handleDelete}
-        />
-      </li>
-    ));
+          <div className="item-card__content">
+            <div className="item-card__title">{v.name}</div>
+            <div className="item-card__meta">
+              {v.fuelType ? `${capitalize(v.fuelType)} • ` : ""}
+              {formatConsumptionDisplay(v)}
+            </div>
+          </div>
+
+          <EditDeleteActions
+            id={v.name}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        </li>
+      );
+    });
   };
 
   return (

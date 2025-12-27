@@ -79,6 +79,20 @@ export function VehicleViewModel() {
         }
     };
 
+    const updateVehicle = async (vehicleId: string, updates: Partial<Vehicle>) => {
+        try {
+            setLoading(true);
+            setError(null);
+            const ownerid = getCurrentUid() ?? undefined; //si no hay sesión, undefined
+            await vehicleService.editVehicle(ownerid, vehicleId, updates);
+            await loadVehicles(); // refrescamos la lista
+        } catch (err: any) {
+            setError(err.message ?? "Error updating vehicle");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     //metodo para obtener las preferencias de unidades del usuario
     const getFuelUnitsPreference = async (): Promise<string | undefined> => {
        // const ownerid = getCurrentUid();
@@ -97,6 +111,7 @@ export function VehicleViewModel() {
         loadVehicles,
         addVehicle,
         deleteVehicle,
+        updateVehicle,
         getFuelUnitsPreference,
         getElectricUnitsPreference,
     };

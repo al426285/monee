@@ -54,7 +54,7 @@ export default function ListPlaces({ onAddPlace, onEditPlace, className = "" }) 
       onAddPlace();
       return;
     }
-    navigate("/newplace");
+    navigate("/places/new");
   };
 
   const findPlace = (id) => places.find((p) => p?.id === id);
@@ -66,7 +66,7 @@ export default function ListPlaces({ onAddPlace, onEditPlace, className = "" }) 
       onEditPlace(place ?? null);
       return;
     }
-    navigate(`/editplace/${placeId}`);
+    navigate(`/places/edit/${placeId}`);
   };
 
   const handleDeletePlace = async (placeId) => {
@@ -142,7 +142,7 @@ export default function ListPlaces({ onAddPlace, onEditPlace, className = "" }) 
       </div>
       <EditDeleteActions
         id={place?.id}
-        editTarget={(id) => `/editplace/${id}`}
+        editTarget={(id) => `/places/edit/${id}`}
         onEdit={(id) => handleEditPlace(id)}
         onDelete={(id) => handleDeletePlace(id)}
       />

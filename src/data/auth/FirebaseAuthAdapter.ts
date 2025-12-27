@@ -65,9 +65,6 @@ export class FirebaseAuthAdapter implements AuthProvider {
       throw handleAuthError(error as FirebaseError);
     }
 
-    // Do not clear session here; let service orchestrator clear it after
-    // both Firestore and Auth records are removed successfully.
-
   }
 
   async logIn(email: string, password: string): Promise<UserSession> {
@@ -93,7 +90,6 @@ export class FirebaseAuthAdapter implements AuthProvider {
     try {
       await signOut(this.auth);
       UserSession.clear();
-      // console.log("logged out")
     } catch (Error) {
       throw handleAuthError(Error as FirebaseError);
     }

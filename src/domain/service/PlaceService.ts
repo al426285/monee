@@ -102,12 +102,13 @@ export class PlaceService {
             const resolvedId = this.resolveUserId(options.userId);
             const current = await this.getPlaceDetails(placeId, resolvedId);
             if (!current) throw new Error("Place not found");
+            const newDescription = "description" in updates ? updates.description ?? "" : current.description;
             const entity = new Place(
                 updates.name ?? current.name,
                 updates.latitude ?? current.latitude,
                 updates.longitude ?? current.longitude,
                 updates.toponymicAddress ?? current.toponymicAddress,
-                updates.description ?? current.description
+                newDescription
             );
             await this.placeRepository.updatePlace(resolvedId, placeId, entity);
             const refreshed = await this.placeRepository.getPlaceById(resolvedId, placeId);

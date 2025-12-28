@@ -53,7 +53,7 @@ export default function EditPlace() {
     if (window.history.length > 1) {
       navigate(-1);
     } else {
-      navigate("/listplaces");
+      navigate("/places");
     }
   }, [navigate]);
 
@@ -231,12 +231,16 @@ export default function EditPlace() {
 
     setSaving(true);
     try {
-      await placeViewmodel.updatePlace(placeId, {
+      const descriptionValue = placeInfo.description?.trim() ?? "";
+      const payload = {
         name: finalName,
-        description: placeInfo.description?.trim() || undefined,
+        description: descriptionValue,
         latitude: latValue,
         longitude: lngValue,
         toponymicAddress: baseName || undefined,
+      };
+      await placeViewmodel.updatePlace(placeId, payload);
+           
       });
       await CustomSwal.fire({
         title: "Place updated",

@@ -5,6 +5,7 @@ import type { FuelType } from "../model/VehicleInterface";
 import { isValidVehicleName } from "../../core/utils/validators";
 import { UserSession } from "../session/UserSession";
 import type { Vehicle } from "../model/VehicleInterface";
+import { VehicleRepositoryFirebase } from "../../data/repository/VehicleRepositoryFirebase";
 
 
 export class VehicleService {
@@ -17,10 +18,8 @@ export class VehicleService {
     // método para obtener la instancia singleton
     public static getInstance(vehicleRepository?: VehicleRepository): VehicleService {
         if (!VehicleService.instance) {
-            if (!vehicleRepository) {
-                throw new Error("VehicleRepository must be provided for the first initialization");
-            }
-            VehicleService.instance = new VehicleService(vehicleRepository);
+            const repo = vehicleRepository ?? new VehicleRepositoryFirebase();
+            VehicleService.instance = new VehicleService(repo);
         } else if (vehicleRepository) {
             VehicleService.instance.vehicleRepository = vehicleRepository;
         }
@@ -59,7 +58,7 @@ export class VehicleService {
         }
 
         // ElectricCar: fuelType debe ser "electric"
-        if (type === "electricCar" && fuelType !== "electric") {
+        if (type === "electricCar" && fuelType && fuelType !== "electric") {
             throw new Error("Un vehículo eléctrico debe tener fuelType = 'electric'.");
             //EN VERDAD DA IGUAL PORQUE EN LA FACTORY SE ASIGNA DIRECTAMENTE
         }
@@ -78,7 +77,6 @@ export class VehicleService {
             consumption
         );
 
-    
 
 
         // Guardamos en Firebase
@@ -86,5 +84,33 @@ export class VehicleService {
     }
     async deleteVehicle(ownerId: string, vehicleName: string): Promise<void> {
         return this.vehicleRepository.deleteVehicle(ownerId, vehicleName);
+    }
+
+    async editVehicle(ownerId: string, vehicleName: string, updates: Partial<Vehicle>): Promise<Vehicle> {
+        //sin implementar
+        const userId = this.resolveUserId(ownerId);
+        const current = await this.getVehicleDetails(vehicleName, userId);
+        if (!current) throw new Error("VehicleNotFoundException");
+        
+        const consumptionAmount = updates.consumption
+            ? updates.consumption.amount
+            : current.consumption.amount;
+
+        const entity = VehicleFactory.createVehicle(
+            current.type,
+            updates.name ?? current.name,
+            (updates.fuelType ?? current.fuelType) || undefined,
+            consumptionAmount
+        );
+
+        await this.vehicleRepository.updateVehicle(userId, vehicleName, entity);
+
+        const refreshed = await this.vehicleRepository.getVehicleByName(userId, entity.name);
+        if (!refreshed) throw new Error("Vehicle could not be refreshed after edit");
+        return refreshed;
+
+    }
+    async getVehicleDetails(vehicleName: string, userId: string): Promise<Vehicle | null> {
+        return this.vehicleRepository.getVehicleByName(userId, vehicleName);
     }
 }

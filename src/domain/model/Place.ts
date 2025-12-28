@@ -49,7 +49,11 @@ export class Place {
   }
 
   set description(value: string | undefined) {
-    this._description = value ? value.trim() : undefined;
+    if (value === undefined || value === null) {
+      this._description = undefined;
+      return;
+    }
+    this._description = value.trim();
   }
 
   toJSON() {

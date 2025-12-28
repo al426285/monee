@@ -44,6 +44,17 @@ const normalizeFuelType = (fuelType?: string | null): FuelType | undefined => {
     return undefined;
 };
 
+const dropUndefined = (payload: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+
+const serializeVehicle = (vehicle: Vehicle | Partial<Vehicle>) => {
+    return dropUndefined({
+        type: (vehicle as any).type,
+        name: vehicle?.name,
+        fuelType: vehicle?.fuelType ?? null,
+        consumption: vehicle?.consumption,
+    });
+};
 
 
 export class VehicleRepositoryFirebase implements VehicleRepositoryInterface {
@@ -106,5 +117,30 @@ export class VehicleRepositoryFirebase implements VehicleRepositoryInterface {
             createdAt: serverTimestamp(),
         });
     }
+
+    async updateVehicle(ownerId: string, vehicleName: string, updates: Partial<Vehicle>): Promise<void> {
+       if (!vehicleName) throw new Error("vehicleName is required to update a vehicle");
+        const q = query(collectionForUser(ownerId), where("name", "==", vehicleName));
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) throw new Error("VehicleNotFoundException");
+
+        await Promise.all(
+            snapshot.docs.map((docSnap) =>
+                updateDoc(docSnap.ref, {
+                    ...serializeVehicle(updates),
+                    updatedAt: serverTimestamp(),
+                })
+            )
+        );
+        
+    }
+
+    async getVehicleByName(ownerId: string, vehicleName: string): Promise<Vehicle | null> {
+        const vehicles: Vehicle[] = await this.getVehiclesByOwnerId(ownerId);
+        const vehicle = vehicles.find(v => v.name === vehicleName);
+        return vehicle || null;
+    }
+
+    
 }
 

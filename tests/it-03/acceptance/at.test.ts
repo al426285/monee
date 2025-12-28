@@ -1,8 +1,10 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { describe, test, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
 import { RouteService } from "../../../src/domain/service/RouteService";
 import { OpenRouteServiceAdapter } from "../../../src/data/provider/OpenRouteServiceAdapter";
 import { OpenRouteServiceHttpClient } from "../../../src/data/provider/OpenRouteServiceHttpClient";
 import { UserService } from "../../../src/domain/service/UserService";
+import { VehicleService } from "../../../src/domain/service/VehicleService";
+const vehicleService = VehicleService.getInstance();
 import { afterAll } from "vitest";
 
 const BASE_USER = {
@@ -58,13 +60,53 @@ const mockORSResponseForRoute = (distanceMeters: number, durationSeconds: number
 	} as any;
 };
 
+
+
+describe("HU15 - Editar los datos de un vehículo (nombre, tipo de combustible, consumo medio)", () => {
+  beforeAll(async () => {
+    // Crear usuario de prueba e iniciar sesión
+    try {
+      // await userService.signUp("al123456@uji.es", "Maria", "MiContrasena64");
+      await userService.logIn("al123456@uji.es", "MiContrasena64");
+      await vehicleService.registerVehicle("al123456@uji.es", "fuelCar", "Fiat Punto", "gasoline", 4.5);
+      await vehicleService.registerVehicle("al123456@uji.es", "electricCar", "Terreneitor", undefined, 20);
+
+    } catch (error) {
+      console.error("Error en beforeAll:", error);
+    }
+
+  });
+
 afterAll(async () => {
-	try {
-		await userService.logOut();
-	} catch {
-		/* ignore */
-	}
+    // Crear usuario de prueba e iniciar sesión
+    try {
+      await userService.logIn("al123456@uji.es", "MiContrasena64");
+      await vehicleService.deleteVehicle("al123456@uji.es", "Fiat Punto");
+      await vehicleService.deleteVehicle("al123456@uji.es", "Terreneitor");
+      await userService.logOut();
+    } catch (error) {
+      console.error("Error en afterAll:", error);
+    }
+  });
+	test("E1 válido: poner combustible de Fiat Punto como diésel", async () => {
+		await expect(
+			vehicleService.editVehicle("al123456@uji.es", "Fiat Punto", { fuelType: "diesel" })
+		).resolves.not.toThrow();
+		await expect(
+			vehicleService.getVehicles("al123456@uji.es")
+		).resolves.toContainEqual(expect.objectContaining({ name: "Fiat Punto", fuelType: "diesel" }));
+	});
+
+	test("E2 inválido: poner combustible de Seat Ibiza (vehículo no guardado) como diésel", async () => {
+		await expect(
+			vehicleService.editVehicle("al123456@uji.es", "Seat Ibiza", { fuelType: "diesel" })
+		).rejects.toThrow("VehicleNotFoundException");
+
+	});
+
 });
+
+
 
 describe("HU16 - RouteService acceptance (real provider)", () => {
 	beforeEach(() => {
@@ -165,6 +207,13 @@ describe("HU19 - Guardar ruta (aceptación)", () => {
 		resetRouteServiceSingleton();
 		vi.restoreAllMocks();
 	});
+  afterAll(async () => {
+    try {
+      await userService.logOut();
+    } catch {
+      /* ignore */
+    }
+  });
 
 	test("E1 válido: sesión abierta, ruta calculada y guardada", async () => {
 		await ensureSession();

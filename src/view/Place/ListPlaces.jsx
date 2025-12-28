@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import { useNavigate, useLocation } from "react-router-dom";
 import { placeViewmodel } from "../../viewmodel/placeViewmodel";
 import EditDeleteActions from "../components/EditDeleteActions.jsx";
 import Swal from "sweetalert2";
@@ -8,6 +9,7 @@ const PLUS_ICON_PATH = "M12 2a1 1 0 0 1 1 1v8h8a1 1 0 1 1 0 2h-8v8a1 1 0 1 1-2 0
 
 export default function ListPlaces({ onAddPlace, onEditPlace, className = "" }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [places, setPlaces] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -30,7 +32,7 @@ export default function ListPlaces({ onAddPlace, onEditPlace, className = "" }) 
 
   useEffect(() => {
     loadPlaces();
-  }, [loadPlaces]);
+  }, [loadPlaces, location.pathname]);
 
   const filteredPlaces = useMemo(() => {
     if (!query.trim()) return places;
@@ -59,9 +61,14 @@ export default function ListPlaces({ onAddPlace, onEditPlace, className = "" }) 
 
   const findPlace = (id) => places.find((p) => p?.id === id);
 
-  const handleEditPlace = (placeId) => {
+  const handleEditPlace = async (placeId) => {
     if (!placeId) return;
     const place = findPlace(placeId);
+    if (!place) {
+      return;
+    }
+
+    // If parent provided a custom edit handler, delegate
     if (typeof onEditPlace === "function") {
       onEditPlace(place ?? null);
       return;
@@ -93,7 +100,21 @@ export default function ListPlaces({ onAddPlace, onEditPlace, className = "" }) 
 
     setDeletingId(placeId);
     try {
+                setDeletingId(placeId);
+
       await placeViewmodel.deletePlace(placeId);
+      // mensaje de OK
+          await Swal.fire({
+            title: "Deleted!",
+            text: `"${place.name}" has been removed successfully.`,
+            icon: "success",
+            background: "#E0E6D5",
+            color: "#585233",
+            customClass: {
+              actions: "mone-swal-actions",
+              confirmButton: "my-confirm-btn",
+            }
+          });
       setPlaces((prev) => prev.filter((item) => item.id !== placeId));
       await Swal.fire({
         title: "Deleted!",
@@ -108,6 +129,10 @@ export default function ListPlaces({ onAddPlace, onEditPlace, className = "" }) 
     } finally {
       setDeletingId("");
     }
+    
+          
+        }
+   return;
   };
 
   const formatMeta = (place) => {

@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from "react";
-import EditDeleteActions from "./EditDeleteActions";
+import React, { useMemo, useState, useRef } from "react";
+import EditDeleteActions from "../components/EditDeleteActions.jsx";
 import { VehicleViewModel } from "../../viewmodel/VehicleViewModel";
-import Swal from "sweetalert2";
+import CustomSwal from "../../core/utils/CustomSwal.js";
 import { isValidVehicleName } from "../../core/utils/validators";
 export default function VehiclesPage() {
   const {
@@ -11,9 +11,30 @@ export default function VehiclesPage() {
     loadVehicles,
     addVehicle,
     deleteVehicle,
+    updateVehicle,
+    getFuelUnitsPreference,
+    getElectricUnitsPreference,
   } = VehicleViewModel();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [editForm, setEditForm] = useState({ name: "", fuelType: "", consumption: "" });
+
+  // Estado inmediato y persistente del formulario (guardar contenido formulario para mostrar al hace back)
+  const wizardFormStateRef = useRef({
+    name: "",
+    type: "",
+    units: "",
+    fuelType: null,
+    consumption: null,
+  });
+
+  //Preferencias de unidades, deberia de venir del viewmodel
+  //seria = get....
+  const [unitPreference, setUnitPreference] = useState({
+    fuel: "L/100km", //getFuelUnitsPreference(),
+    electric: "kWh/100km", //getElectricUnitsPreference()
+  });
 
   const PLUS_ICON_PATH =
     "M12 2a1 1 0 0 1 1 1v8h8a1 1 0 1 1 0 2h-8v8a1 1 0 1 1-2 0v-8H3a1 1 0 1 1 0-2h8V3a1 1 0 0 1 1-1z";
@@ -49,200 +70,236 @@ export default function VehiclesPage() {
   };
 
   const handleAddClick = async () => {
-    const formState = {
-      name: "",
-      type: "",
-      fuelType: null,
-      consumption: null,
-    };
-
-    const buildTypeOptions = () => `
-      <option value="" disabled ${formState.type ? "" : "selected"}>Select vehicle type</option>
-      <option value="bike" ${formState.type === "bike" ? "selected" : ""}>Bike</option>
-      <option value="walking" ${formState.type === "walking" ? "selected" : ""}>Walking</option>
-      <option value="fuelCar" ${formState.type === "fuelCar" ? "selected" : ""}>Fuel Car</option>
-      <option value="electricCar" ${formState.type === "electricCar" ? "selected" : ""}>Electric Car</option>
-    `;
-
-    const buildFuelOptions = () => `
-      <option value="" disabled ${formState.fuelType ? "" : "selected"}>Select fuel type</option>
-      <option value="gasoline" ${formState.fuelType === "gasoline" ? "selected" : ""}>Gasoline</option>
-      <option value="diesel" ${formState.fuelType === "diesel" ? "selected" : ""}>Diesel</option>
-    `;
-
     const customClass = {
       confirmButton: "my-confirm-btn",
       cancelButton: "my-cancel-btn",
       denyButton: "my-back-btn",
       input: "my-input",
+      actions: "mone-swal-actions",
     };
 
-    let step = "name";
-
-    while (true) {
-      if (step === "name") {
-        const nameResult = await Swal.fire({
-          title: "Vehicle name",
-          input: "text",
-          inputValue: formState.name,
-          inputPlaceholder: "Enter vehicle name",
-          showCancelButton: true,
-          confirmButtonText: "Next",
-          cancelButtonText: "Cancel",
-          background: "#CCD5B9",
-          color: "#585233",
-          customClass,
-          inputValidator: (value) => {
-            if (!value) return "You need to write something!";
-            if (!isValidVehicleName(value)) return "Invalid name format, cannot contain special characters or letter 'ñ'.";
-            return null;
-          },
-        });
-
-        if (nameResult.isDismissed) return;
-        formState.name = nameResult.value;
-        step = "type";
-        continue;
-      }
-
-      if (step === "type") {
-        const typeResult = await Swal.fire({
-          title: "Vehicle type",
-          html: `
-            <select id="vehicleType" class="my-select">
-              ${buildTypeOptions()}
-            </select>
-          `,
-          background: "#CCD5B9",
-          color: "#585233",
-          customClass,
-          showCancelButton: true,
-          showDenyButton: true,
-          denyButtonText: "Back",
-          confirmButtonText: "Next",
-          focusConfirm: false,
-          preConfirm: () => {
-            const select = Swal.getPopup().querySelector('#vehicleType');
-            const value = select?.value;
-            if (!value) {
-              Swal.showValidationMessage("You must select a type");
-              return;
-            }
-            return value;
-          },
-        });
-
-        if (typeResult.isDenied) {
-          step = "name";
-          continue;
+    // PASO 1: Nombre y Tipo (walking, bicycle, vehicle)
+    const step1 = await CustomSwal.fire({
+      title: "Add Mobility Method",
+      html: `
+        <div style="text-align: left;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Name</label>
+          <input type="text" id="vehicleName" class="my-input" value="${wizardFormStateRef.current.name}" style="width: 100%; box-sizing: border-box;" />
+          
+          <label style="display: block; margin-top: 1rem; margin-bottom: 0.5rem; font-weight: 600;">Type</label>
+          <select id="vehicleType" class="my-select" style="width: 100%; padding: 0.5rem; border: 1px solid #585233; border-radius: 4px;">
+            <option value="" disabled ${!wizardFormStateRef.current.type ? "selected" : ""}>Select type</option>
+            <option value="bike" ${wizardFormStateRef.current.type === "bike" ? "selected" : ""}>Bike</option>
+            <option value="walking" ${wizardFormStateRef.current.type === "walking" ? "selected" : ""}>Walking</option>
+            <option value="car" ${wizardFormStateRef.current.type === "car" ? "selected" : ""}>Vehicle</option>
+          </select>
+        </div>
+      `,
+      background: "#CCD5B9",
+      color: "#585233",
+      customClass,
+      showCancelButton: true,
+      confirmButtonText: "Next",
+      cancelButtonText: "Cancel",
+      focusConfirm: false,
+      didOpen: () => {
+        const nameInput = CustomSwal.getPopup().querySelector('#vehicleName');
+        nameInput?.focus();
+      },
+      preConfirm: () => {
+        const name = CustomSwal.getPopup().querySelector('#vehicleName')?.value || "";
+        const type = CustomSwal.getPopup().querySelector('#vehicleType')?.value || "";
+        
+        if (!name) {
+          CustomSwal.showValidationMessage("Name is required");
+          return false;
         }
-        if (typeResult.isDismissed) return;
-
-        formState.type = typeResult.value;
-        formState.fuelType =
-          formState.type === "fuelCar"
-            ? formState.fuelType
-            : formState.type === "electricCar"
-              ? "electric"
-              : null;
-        step = formState.type === "fuelCar" ? "fuelType" : "consumption";
-        continue;
-      }
-
-      if (step === "fuelType") {
-        const fuelResult = await Swal.fire({
-          title: "Fuel Type",
-          html: `
-            <select id="fuelType" class="my-select">
-              ${buildFuelOptions()}
-            </select>
-          `,
-          background: "#CCD5B9",
-          color: "#585233",
-          customClass,
-          showCancelButton: true,
-          showDenyButton: true,
-          denyButtonText: "Back",
-          confirmButtonText: "Next",
-          focusConfirm: false,
-          preConfirm: () => {
-            const select = Swal.getPopup().querySelector('#fuelType');
-            const value = select?.value;
-            if (!value) {
-              Swal.showValidationMessage("Select a fuel type");
-              return;
-            }
-            return value;
-          },
-        });
-
-        if (fuelResult.isDenied) {
-          step = "type";
-          continue;
+        if (!isValidVehicleName(name)) {
+          CustomSwal.showValidationMessage("Invalid name format");
+          return false;
         }
-        if (fuelResult.isDismissed) return;
-
-        formState.fuelType = fuelResult.value;
-        step = "consumption";
-        continue;
-      }
-
-      if (step === "consumption") {
-        const unitLabel =
-          formState.type === "fuelCar"
-            ? "L/100km"
-            : formState.type === "electricCar"
-              ? "kWh/100km"
-              : "Kcal/min";
-
-        const consumptionResult = await Swal.fire({
-          title: `Consumption (${unitLabel})`,
-          input: "number",
-          inputValue: formState.consumption ?? "",
-          inputPlaceholder: "Enter consumption",
-          inputAttributes: { min: "0", step: "0.1" },
-          showCancelButton: true,
-          showDenyButton: true,
-          denyButtonText: "Back",
-          confirmButtonText: "Save",
-          background: "#CCD5B9",
-          color: "#585233",
-          customClass,
-          preConfirm: (value) => {
-            if (!value) {
-              Swal.showValidationMessage("Consumption is required");
-              return;
-            }
-            const numeric = parseFloat(value);
-            if (Number.isNaN(numeric) || numeric <= 0) {
-              Swal.showValidationMessage("Consumption must be greater than 0");
-              return;
-            }
-            return numeric;
-          },
-        });
-
-        if (consumptionResult.isDenied) {
-          step = formState.type === "fuelCar" ? "fuelType" : "type";
-          continue;
+        if (!type) {
+          CustomSwal.showValidationMessage("Type is required");
+          return false;
         }
-        if (consumptionResult.isDismissed) return;
-
-        formState.consumption = consumptionResult.value;
-        break;
-      }
+        return { name, type };
+      },
+    });
+    if (!step1.value) {
+      wizardFormStateRef.current = { name: "", type: "", units: "", fuelType: null, consumption: null };
+      return;
     }
 
-    await addVehicle(
-      formState.type,
-      formState.name,
-      formState.fuelType,
-      formState.consumption ?? undefined
-    );
+    wizardFormStateRef.current.name = step1.value.name;
+    wizardFormStateRef.current.type = step1.value.type;
+
+    // PASO 2: Características según tipo
+    if (step1.value.type === "bike" || step1.value.type === "walking") {
+      const step2 = await CustomSwal.fire({
+        title: `Configure ${capitalize(step1.value.type)}`,
+        html: `
+          <div style="text-align: left;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Average calories consumption (kcal/min)</label>
+            <input type="number" id="consumption" class="my-input" value="${wizardFormStateRef.current.consumption ?? ""}" min="0" step="0.1" style="width: 100%; box-sizing: border-box;" />
+          </div>
+        `,
+        background: "#CCD5B9",
+        color: "#585233",
+        customClass,
+        showDenyButton: true,
+        showCancelButton: true,
+        confirmButtonText: "Save",
+        denyButtonText: "Back",
+        cancelButtonText: "Cancel",
+        focusConfirm: false,
+        didOpen: () => {
+          CustomSwal.getPopup().querySelector('#consumption')?.focus();
+        },
+        preConfirm: () => {
+          const consumption = parseFloat(CustomSwal.getPopup().querySelector('#consumption')?.value || "0");
+          if (!consumption || consumption <= 0) {
+            CustomSwal.showValidationMessage("Consumption must be greater than 0");
+            return false;
+          }
+          return consumption;
+        },
+      });
+
+      if (step2.isDenied) {
+        const currentConsumption = parseFloat(CustomSwal.getPopup().querySelector('#consumption')?.value || "0");
+        wizardFormStateRef.current.consumption = currentConsumption || wizardFormStateRef.current.consumption;
+        return handleAddClick();
+      }
+
+      if (!step2.value) {
+        wizardFormStateRef.current = { name: "", type: "", units: "", fuelType: null, consumption: null };
+        return;
+      }
+
+      await addVehicle(
+        step1.value.type,
+        step1.value.name,
+        "",
+        null,
+        step2.value
+      );
+
+      wizardFormStateRef.current = { name: "", type: "", units: "", fuelType: null, consumption: null };
+      return;
+    }
+
+    if (step1.value.type === "car") {
+      const fuelResult = await CustomSwal.fire({
+        title: "Fuel Type",
+        html: `
+          <select id="fuelType" class="my-select" style="width: 100%; padding: 0.5rem; border: 1px solid #585233; border-radius: 4px;">
+            <option value="" disabled ${!wizardFormStateRef.current.fuelType && wizardFormStateRef.current.type !== "electricCar" && wizardFormStateRef.current.type !== "fuelCar" ? "selected" : ""}>Select type</option>
+            <option value="electric" ${wizardFormStateRef.current.fuelType === "electric" ? "selected" : ""}>Electric</option>
+            <option value="gasoline" ${wizardFormStateRef.current.fuelType === "gasoline" ? "selected" : ""}>Gasoline</option>
+            <option value="diesel" ${wizardFormStateRef.current.fuelType === "diesel" ? "selected" : ""}>Diesel</option>
+          </select>
+        `,
+        background: "#CCD5B9",
+        color: "#585233",
+        customClass,
+        showCancelButton: true,
+        confirmButtonText: "Next",
+        cancelButtonText: "Cancel",
+        focusConfirm: false,
+        preConfirm: () => {
+          const fuel = CustomSwal.getPopup().querySelector('#fuelType')?.value;
+          if (!fuel) {
+            CustomSwal.showValidationMessage("Select type");
+            return false;
+          }
+          return fuel;
+        },
+      });
+
+      if (fuelResult.isDismissed) {
+        wizardFormStateRef.current = { name: "", type: "", units: "", fuelType: null, consumption: null };
+        return;
+      }
+
+      const isElectric = fuelResult.value === "electric";
+
+      const unitsResult = await CustomSwal.fire({
+        title: "Measurement units",
+        html: `
+          <div style="text-align: left;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Select unit</label>
+            <select id="units" class="my-select" style="width: 100%; padding: 0.5rem; border: 1px solid #585233; border-radius: 4px; margin-bottom: 1rem;">
+              ${isElectric ? `
+                <option value="kWh/100km" ${wizardFormStateRef.current.units === "kWh/100km" || !wizardFormStateRef.current.units ? "selected" : ""}>kWh/100km</option>
+                <option value="km/kWh" ${wizardFormStateRef.current.units === "km/kWh" ? "selected" : ""}>km/kWh</option>
+              ` : `
+                <option value="L/100km" ${wizardFormStateRef.current.units === "L/100km" || !wizardFormStateRef.current.units ? "selected" : ""}>L/100km</option>
+                <option value="km/l" ${wizardFormStateRef.current.units === "km/l" ? "selected" : ""}>km/l</option>
+              `}
+            </select>
+            
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Consumption</label>
+            <input type="number" id="consumption" class="my-input" value="${wizardFormStateRef.current.consumption ?? ""}" min="0" step="0.1" style="width: 100%; box-sizing: border-box;" />
+          </div>
+        `,
+        background: "#CCD5B9",
+        color: "#585233",
+        customClass,
+        showDenyButton: true,
+        showCancelButton: true,
+        confirmButtonText: "Save",
+        denyButtonText: "Back",
+        cancelButtonText: "Cancel",
+        focusConfirm: false,
+        didOpen: () => {
+          CustomSwal.getPopup().querySelector('#consumption')?.focus();
+        },
+        preConfirm: () => {
+          const units = CustomSwal.getPopup().querySelector('#units')?.value;
+          const consumption = parseFloat(CustomSwal.getPopup().querySelector('#consumption')?.value || "0");
+
+          if (!units) {
+            CustomSwal.showValidationMessage("Select unit");
+            return false;
+          }
+          if (!consumption || consumption <= 0) {
+            CustomSwal.showValidationMessage("Consumption must be greater than 0");
+            return false;
+          }
+          return { units, consumption };
+        },
+      });
+
+      if (unitsResult.isDenied) {
+        const currentUnits = CustomSwal.getPopup().querySelector('#units')?.value;
+        const currentConsumption = parseFloat(CustomSwal.getPopup().querySelector('#consumption')?.value || "0");
+        wizardFormStateRef.current.units = currentUnits || wizardFormStateRef.current.units;
+        wizardFormStateRef.current.consumption = currentConsumption || wizardFormStateRef.current.consumption;
+        return handleAddClick();
+      }
+
+      if (!unitsResult.value) {
+        wizardFormStateRef.current = { name: "", type: "", units: "", fuelType: null, consumption: null };
+        return;
+      }
+
+      wizardFormStateRef.current.fuelType = fuelResult.value;
+      wizardFormStateRef.current.type = isElectric ? "electricCar" : "fuelCar";
+
+      await addVehicle(
+        wizardFormStateRef.current.type,
+        wizardFormStateRef.current.name,
+        unitsResult.value.units,
+        wizardFormStateRef.current.fuelType,
+        unitsResult.value.consumption
+      );
+
+      wizardFormStateRef.current = { name: "", type: "", units: "", fuelType: null, consumption: null };
+    }
   };
 
   const handleDelete = async (id) => {
-    const result = await Swal.fire({
+    const result = await CustomSwal.fire({
       title: "Are you sure?",
       text: `You are about to delete "${id}". This action cannot be undone.`,
       icon: "warning",
@@ -252,6 +309,7 @@ export default function VehiclesPage() {
       background: "#E0E6D5",
       color: "#585233",
       customClass: {
+        actions: "mone-swal-actions",
         confirmButton: "my-confirm-btn",
         cancelButton: "my-cancel-btn"
       }
@@ -262,57 +320,229 @@ export default function VehiclesPage() {
       await deleteVehicle(id);
 
       // mensaje de OK
-      await Swal.fire({
+      await CustomSwal.fire({
         title: "Deleted!",
         text: `"${id}" has been removed successfully.`,
         icon: "success",
-        background: "#E0E6D5",
-        color: "#585233",
-        customClass: {
-          confirmButton: "my-confirm-btn",
-        }
       });
     }
   };
 
+  const handleEdit = (vehicleName) => {
+    const vehicle = vehicles.find(v => v.name === vehicleName);
+    if (!vehicle) return;
+    
+    const normalized = normalizeConsumptionShape(vehicle.consumption);
+    setEditingVehicle(vehicle);
+    setEditForm({
+      name: vehicle.name || "",
+      fuelType: vehicle.fuelType || "",
+      consumption: normalized?.amount?.toString() || ""
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingVehicle(null);
+    setEditForm({ name: "", fuelType: "", consumption: "" });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingVehicle) return;
+    
+    const updates = {
+      name: editForm.name,
+      fuelType: editForm.fuelType || editingVehicle.fuelType,
+      consumption: {
+        amount: parseFloat(editForm.consumption) || 0,
+        unit: editingVehicle.consumption?.unit || "kcal/min"
+      }
+    };
+
+    await updateVehicle(editingVehicle.name, updates);
+    handleCancelEdit();
+  };
+
   const capitalize = (str) =>
     str.charAt(0).toUpperCase() + str.slice(1);
+
+  const normalizeConsumptionShape = (consumption) => {
+    if (!consumption) return null;
+
+    if (typeof consumption.amount === "number") {
+      return {
+        amount: consumption.amount,
+        unit: consumption.unit,
+      };
+    }
+
+    if (
+      consumption.amount &&
+      typeof consumption.amount.amount === "number"
+    ) {
+      return {
+        amount: consumption.amount.amount,
+        unit: consumption.amount.unit || consumption.unit,
+      };
+    }
+
+    if (typeof consumption === "number") {
+      return { amount: consumption, unit: "" };
+    }
+
+    return null;
+  };
+
+  const convertConsumptionValue = (value, fromUnit, toUnit) => {
+    if (value == null || Number.isNaN(value)) return null;
+    if (!fromUnit || !toUnit || fromUnit === toUnit) return value;
+
+    const ratioUnits = [
+      ["L/100km", "km/l"],
+      ["kWh/100km", "km/kWh"],
+    ];
+    //si alguna de las unidades pasadas se puede convertir
+    const isConvertible = ratioUnits.some(
+      ([a, b]) =>
+        (fromUnit === a && toUnit === b) || (fromUnit === b && toUnit === a)
+    );
+    console.log("isConvertible:", isConvertible, "desde: ", fromUnit, " hasta: ", toUnit);
+
+    if (!isConvertible || value === 0) return value;
+
+    return 100 / value;
+  };
+
+  const formatConsumptionDisplay = (vehicle) => {
+    const normalized = normalizeConsumptionShape(vehicle?.consumption);
+    if (!normalized || normalized.amount == null || !normalized.unit) return "";
+
+    const type = vehicle?.type?.toLowerCase();
+    let targetUnit = normalized.unit;
+
+    if (type === "fuelcar") {
+      targetUnit = unitPreference.fuel;
+    } else if (type === "electriccar") {
+      targetUnit = unitPreference.electric;
+    }
+
+    const convertedValue = convertConsumptionValue(
+      normalized.amount,
+      normalized.unit,
+      targetUnit
+    );
+
+    //Nan, not a number
+    if (convertedValue == null || Number.isNaN(convertedValue)) return "";
+
+    const rounded = convertedValue === Infinity || convertedValue === -Infinity
+      ? "∞"
+      : convertedValue.toFixed(2);
+
+    return `${rounded} ${targetUnit}`.trim();
+  };
 
 
   const renderList = (list) => {
     if (loading) return <li className="item-card item-card--empty">Loading...</li>;
     if (!list.length) return <li className="item-card item-card--empty">No items found</li>;
 
-    //  console.log("Rendering list:", list[0].constructor.name);
+    return list.map((v) => {
+      const isEditing = editingVehicle?.name === v.name;
+      
+      if (isEditing) {
+        return (
+          <li key={v.id} className="item-card item-card--editing">
+            <div className="edit-form">
+              <h3 className="edit-form__title">Edit {capitalize(v.type)}</h3>
+              
+              <div className="edit-form__field">
+                <label className="edit-form__label">{capitalize(v.type)} Name</label>
+                <input
+                  type="text"
+                  className="edit-form__input"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                  placeholder="Enter name"
+                />
+              </div>
 
+              {v.type === "FuelCar" && (
+                <div className="edit-form__field">
+                  <label className="edit-form__label">Fuel Type</label>
+                  <select
+                    className="edit-form__select"
+                    value={editForm.fuelType}
+                    onChange={(e) => setEditForm({...editForm, fuelType: e.target.value})}
+                  >
+                    <option value="gasoline">Gasoline</option>
+                    <option value="diesel">Diesel</option>
+                  </select>
+                </div>
+              )}
 
-    return list.map((v) => (
-      <li key={v.id} className="item-card">
-        <div className="item-card__icon" aria-hidden>
-          <img src={getVehicleImage(v)}
-            className="item-icon" alt="bici" />
+              <div className="edit-form__field">
+                <label className="edit-form__label">
+                  Average {v.type === "Bike" || v.type === "Walking" ? "calories" : ""} consumption
+                </label>
+                <div className="edit-form__input-group">
+                  <input
+                    type="number"
+                    className="edit-form__input"
+                    value={editForm.consumption}
+                    onChange={(e) => setEditForm({...editForm, consumption: e.target.value})}
+                    placeholder="Enter consumption"
+                    step="0.1"
+                    min="0"
+                  />
+                  <span className="edit-form__unit">
+                    {v.consumption?.unit || "kcal/min"}
+                  </span>
+                </div>
+              </div>
 
-        </div>
+              <div className="edit-form__actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleCancelEdit}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSaveEdit}
+                >
+                  Save changes
+                </button>
+              </div>
+            </div>
+          </li>
+        );
+      }
 
-        <div className="item-card__content">
-          <div className="item-card__title">{v.name}</div>
-          <div className="item-card__meta">
-
-            {v.fuelType ? `  ${capitalize(v.fuelType)} •` : ""}
-
-            {v.consumption?.amount?.amount
-              ? `  ${v.consumption.amount.amount} ${v.consumption.amount.unit}`
-              : ""}
+      return (
+        <li key={v.id} className="item-card">
+          <div className="item-card__icon" aria-hidden>
+            <img src={getVehicleImage(v)} className="item-icon" alt="vehicle" />
           </div>
-        </div>
 
-        <EditDeleteActions
-          id={v.name}
-          editTarget={"/edit-vehicle"}
-          onDelete={handleDelete}
-        />
-      </li>
-    ));
+          <div className="item-card__content">
+            <div className="item-card__title">{v.name}</div>
+            <div className="item-card__meta">
+              {v.fuelType ? `${capitalize(v.fuelType)} • ` : ""}
+              {formatConsumptionDisplay(v)}
+            </div>
+          </div>
+
+          <EditDeleteActions
+            id={v.name}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        </li>
+      );
+    });
   };
 
   return (
@@ -332,19 +562,17 @@ export default function VehiclesPage() {
         </button>
       </div>
 
-      <div className="search-bar" style={{ border:'solid 1px #585233' }}>
-        <label htmlFor="vehicle-search" style={{ fontWeight: 'bold' }} className="sr-only">
-          Search vehicles
-        </label>
+      <div className="toolbar" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
         <input
-          id="vehicle-search"
+          className="search-bar"
           type="search"
-          className="search-input"
-          placeholder="Search by name, or type of fuel"
+          placeholder="Search mobility methods by name, type, or fuel..."
+          aria-label="Search mobility methods"
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
-          aria-label="Search vehicles by name, type, or fuel"
         />
+
+
       </div>
 
       {error && <div className="error-banner">{error}</div>}
@@ -365,4 +593,6 @@ export default function VehiclesPage() {
       </section>
     </div>
   );
+
 }
+

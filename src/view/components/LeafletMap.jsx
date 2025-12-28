@@ -94,22 +94,38 @@ export default function LeafletMap({
     <MapContainer
       center={center}
       zoom={zoom}
+      minZoom={2}
       scrollWheelZoom
+      maxBounds={[[-85, -180], [85, 180]]}
+      maxBoundsViscosity={1}
+      worldCopyJump={false}
       style={{ width: "100%", height: "100%", minHeight: 420, ...(style || {}) }}
     >
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution="&copy; OpenStreetMap contributors"
+        noWrap
+      />
       <ClickSetter onMapClick={onMapClick} />
       {!autoFitBounds && <MapCenterer center={center} />}
       {autoFitBounds && <AutoFitBounds markers={markers} polyline={polyline} enabled />}
       {markers.map((pos, i) => {
-        const isDestination = highlightDestination && markers.length >= 2 && i === markers.length - 1;
-        const markerProps = highlightDestination
-          ? { icon: isDestination ? iconDestino : iconSalida }
-          : {};
-        const coords = Array.isArray(pos) ? [Number(pos[0]), Number(pos[1])] : [pos.lat, pos.lng];
+        // pos can be:
+        // - an array [lat, lng]
+        // - an object { coords: [lat, lng], role: 'origin'|'destination' }
+        const rawCoords = Array.isArray(pos) ? pos : pos?.coords ?? pos;
+        const coords = [Number(rawCoords[0]), Number(rawCoords[1])];
+        const role = pos && !Array.isArray(pos) ? pos.role : undefined;
+
+        // Decide destination status: prefer explicit role, otherwise fall back to index-based logic
+        const isDestination = role === "destination" || (highlightDestination && markers.length >= 2 && i === markers.length - 1);
+        const markerProps = highlightDestination ? { icon: isDestination ? iconDestino : iconSalida } : {};
+
+        const label = role === "origin" ? "Start" : role === "destination" ? "End" : i === 0 ? "Start" : "End";
+
         return (
           <Marker key={i} position={coords} {...markerProps}>
-            <Popup>{i === 0 ? "Start" : "End"}: {coords[0]}, {coords[1]}</Popup>
+            <Popup>{label}: {coords[0]}, {coords[1]}</Popup>
           </Marker>
         );
       })}

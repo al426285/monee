@@ -46,7 +46,6 @@ const serializePlace = (place: Place | Partial<Place>) => {
 
 export class PlaceRepositoryFirebase implements PlaceRepository {
 	async getPlacesByUser(userId: string): Promise<any[]> {
-		console.log("dentro getPlacesByUser");
 		try{const placesRef = collectionForUser(userId);
 		const q = query(placesRef, orderBy("createdAt", "desc"));
 		const snapshot = await getDocs(q);
@@ -76,6 +75,7 @@ export class PlaceRepositoryFirebase implements PlaceRepository {
 	
 	async updatePlace(userId: string, placeId: string, place: Place): Promise<void> {
 		if (!placeId) throw new Error("placeId is required to update a place");
+		console.log("dentro firebase, nuevo valor:", place);
 		const docRef = doc(collectionForUser(userId), placeId);
 		await updateDoc(docRef, {
 			...serializePlace(place),

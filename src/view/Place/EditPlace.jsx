@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import LeafletMap from "../components/LeafletMap.jsx";
 import { placeViewmodel } from "../../viewmodel/placeViewmodel";
+import CustomSwal from "../../core/utils/CustomSwal";
 
 const SUCCESS_BUTTON_STYLE = {
   backgroundColor: "var(--color-success, #198754)",
@@ -52,7 +53,7 @@ export default function EditPlace() {
     if (window.history.length > 1) {
       navigate(-1);
     } else {
-      navigate("/listplaces");
+      navigate("/places");
     }
   }, [navigate]);
 
@@ -230,12 +231,21 @@ export default function EditPlace() {
 
     setSaving(true);
     try {
-      await placeViewmodel.updatePlace(placeId, {
+      const descriptionValue = placeInfo.description?.trim() ?? "";
+      const payload = {
         name: finalName,
-        description: placeInfo.description?.trim() || undefined,
+        description: descriptionValue,
         latitude: latValue,
         longitude: lngValue,
         toponymicAddress: baseName || undefined,
+      };
+      await placeViewmodel.updatePlace(placeId, payload);
+      
+      await CustomSwal.fire({
+        title: "Place updated",
+        text: `Place "${finalName}" updated successfully.`,
+        icon: "success",
+        confirmButtonText: "Close",
       });
       setSuccessMessage(`Place "${finalName}" updated successfully.`);
     } catch (err) {
@@ -277,11 +287,34 @@ export default function EditPlace() {
   return (
     <section className="place-row">
       <aside className="place-card default-container with-border">
+        <button
+          type="button"
+          onClick={handleBack}
+          style={{
+            alignSelf: "flex-start",
+            marginBottom: "0.5rem",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            color: "var(--color-primary)",
+          }}
+          aria-label="Go back"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M15.5 19.5 8 12l7.5-7.5 1.4 1.4L10.8 12l6.1 6.1z"
+            />
+          </svg>
+          Back
+        </button>
+
         <div className="card-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2 className="card-title">Edit Place</h2>
-          <button type="button" className="btn btn-secondary" onClick={handleBack}>
-            Back
-          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="stack">
@@ -457,11 +490,6 @@ export default function EditPlace() {
               </button>
             </div>
 
-            {isSuccess && (
-              <p className="success-text" style={{ marginTop: 1, textAlign: "center" }} aria-live="polite">
-                {successMessage}
-              </p>
-            )}
 
             {formError && (
               <p className="error-text" style={{ textAlign: "center", margin: 0 }}>

@@ -44,6 +44,17 @@ const normalizeFuelType = (fuelType?: string | null): FuelType | undefined => {
     return undefined;
 };
 
+const dropUndefined = (payload: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+
+const serializeVehicle = (vehicle: Vehicle | Partial<Vehicle>) => {
+    return dropUndefined({
+        type: (vehicle as any).type,
+        name: vehicle?.name,
+        fuelType: vehicle?.fuelType ?? null,
+        consumption: vehicle?.consumption,
+    });
+};
 
 
 export class VehicleRepositoryFirebase implements VehicleRepositoryInterface {
@@ -56,10 +67,7 @@ export class VehicleRepositoryFirebase implements VehicleRepositoryInterface {
         return snapshot.docs.map((d) => {
             const data = d.data() as VehicleDoc;
             const normalizedFuel = normalizeFuelType(data.fuelType);
-        
             const type = data.type;
-            console.log("Vehicle type from Firestore:", type);
-            console.log("Vehicle data from Firestore:", data);
 
             switch (type.toLowerCase()) {
                 case "bike":
@@ -98,6 +106,8 @@ export class VehicleRepositoryFirebase implements VehicleRepositoryInterface {
     async saveVehicle(ownerId: string, vehicle: Vehicle): Promise<void> {
         // Usamos collectionForUser para escribir siempre dentro de /users/{uid}/vehicles
         // en lugar de en una colección global "vehicles" que mezclaría datos de todos los usuarios.
+      
+    //  console.log("Guardando vehículo para ownerId:", ownerId, "Vehículo:", vehicle);
         await addDoc(collectionForUser(ownerId), {
             ownerId,
             type: vehicle.type,
@@ -107,5 +117,30 @@ export class VehicleRepositoryFirebase implements VehicleRepositoryInterface {
             createdAt: serverTimestamp(),
         });
     }
+
+    async updateVehicle(ownerId: string, vehicleName: string, updates: Partial<Vehicle>): Promise<void> {
+       if (!vehicleName) throw new Error("vehicleName is required to update a vehicle");
+        const q = query(collectionForUser(ownerId), where("name", "==", vehicleName));
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) throw new Error("VehicleNotFoundException");
+
+        await Promise.all(
+            snapshot.docs.map((docSnap) =>
+                updateDoc(docSnap.ref, {
+                    ...serializeVehicle(updates),
+                    updatedAt: serverTimestamp(),
+                })
+            )
+        );
+        
+    }
+
+    async getVehicleByName(ownerId: string, vehicleName: string): Promise<Vehicle | null> {
+        const vehicles: Vehicle[] = await this.getVehiclesByOwnerId(ownerId);
+        const vehicle = vehicles.find(v => v.name === vehicleName);
+        return vehicle || null;
+    }
+
+    
 }
 

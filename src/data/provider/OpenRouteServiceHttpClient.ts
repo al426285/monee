@@ -26,13 +26,13 @@ export class OpenRouteServiceHttpClient {
     const [originLat, originLng] = parseCoords(origin);
     const [destLat, destLng] = parseCoords(destination);
 
+    const ORS_BASE = "https://api.openrouteservice.org";
     const profile = PROFILE_MAP[mobilityType?.toLowerCase()] ?? mobilityType;
     const preference = ROUTE_PREFERENCE_MAP[routeType?.toLowerCase()] ?? "fastest";
 
-    const base = typeof window !== "undefined" && window.location?.origin
-      ? ""
-      : process.env.VITE_APP_BASE_URL || "http://localhost:5173";
-    const url = `${base}/ors/v2/directions/${profile}/geojson`;
+  
+    const url = `${ORS_BASE}/ors/v2/directions/${profile}/geojson`;
+    
 
     return fetch(url, {
       method: "POST",

@@ -220,7 +220,16 @@ export class PlaceService {
             size: String(Math.max(1, limit)),
             });
 
-            const res = await fetch(`${ORS_BASE}/geocode/search?${params.toString()}`);
+            const res = await fetch(
+  `${ORS_BASE}/geocode/search?${params.toString()}`,
+  {
+    headers: {
+      Authorization: import.meta.env.VITE_ORS_API_KEY,
+      Accept: "application/json",
+    },
+  }
+);
+
             const contentType = res.headers.get("content-type") ?? "";
 
                         if (!res.ok || !contentType.includes("application/json")) {

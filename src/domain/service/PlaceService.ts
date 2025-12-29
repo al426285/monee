@@ -7,7 +7,7 @@ import { UserSession } from "../session/UserSession.js";
 
 
 const ORS_API_KEY = import.meta.env.VITE_ORS_API_KEY ;
-const ORS_BASE = "/ors";
+const ORS_BASE = "https://api.openrouteservice.org";
 
 
 export interface ToponymSuggestion {
